@@ -1,729 +1,883 @@
-//////////////////////////////////////////////////////////////////////////////////////
-//    akashi - a server for Attorney Online 2                                       //
-//    Copyright (C) 2020  scatterflower                                             //
-//                                                                                  //
-//    This program is free software: you can redistribute it and/or modify          //
-//    it under the terms of the GNU Affero General Public License as                //
-//    published by the Free Software Foundation, either version 3 of the            //
-//    License, or (at your option) any later version.                               //
-//                                                                                  //
-//    This program is distributed in the hope that it will be useful,               //
-//    but WITHOUT ANY WARRANTY; without even the implied warranty of                //
-//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                 //
-//    GNU Affero General Public License for more details.                           //
-//                                                                                  //
-//    You should have received a copy of the GNU Affero General Public License      //
-//    along with this program.  If not, see <https://www.gnu.org/licenses/>.        //
-//////////////////////////////////////////////////////////////////////////////////////
 #include "config_manager.h"
+#include "core/logging.h"
+#include "kenji_log.h"
 #include <QSqlDatabase>
 #include <QSqlQuery>
 
-QSettings *ConfigManager::m_settings = new QSettings("config/config.ini", QSettings::IniFormat);
-QSettings *ConfigManager::m_discord = new QSettings("config/discord.ini", QSettings::IniFormat);
-QSettings *ConfigManager::m_areas = new QSettings("config/areas.ini", QSettings::IniFormat);
-QSettings *ConfigManager::m_logtext = new QSettings("config/text/logtext.ini", QSettings::IniFormat);
-QSettings *ConfigManager::m_ambience = new QSettings("config/ambience.ini", QSettings::IniFormat);
-ConfigManager::CommandSettings *ConfigManager::m_commands = new CommandSettings();
-MusicList *ConfigManager::m_musicList = new MusicList;
-QHash<QString, ConfigManager::help> *ConfigManager::m_commands_help = new QHash<QString, ConfigManager::help>;
-QStringList *ConfigManager::m_ordered_list = new QStringList;
+kenji::ConfigManager *kenji::ConfigManager::self = nullptr;
 
-bool ConfigManager::verifyServerConfig()
+kenji::ConfigManager::ConfigManager()
 {
-    // Verify directories
-    QStringList l_directories{"config/", "config/text/"};
-    for (const QString &l_directory : l_directories) {
-        if (!dirExists(QFileInfo(l_directory))) {
-            qCritical() << l_directory + " does not exist!";
-            return false;
-        }
+  Q_ASSERT(!self);
+  self = this;
+}
+
+kenji::ConfigManager::~ConfigManager()
+{
+  Q_ASSERT(self);
+  self = nullptr;
+}
+
+bool kenji::ConfigManager::verifyServerConfig()
+{
+  // Verify directories
+  QStringList l_directories{"config/", "config/text/"};
+  for (const QString &l_directory : l_directories)
+  {
+    if (!dirExists(QFileInfo(l_directory)))
+    {
+      zCritical(log::config) << l_directory + " does not exist!";
+      return false;
+    }
+  }
+
+  // Verify config files
+  QStringList l_config_files{"config/config.ini", "config/areas.ini", "config/backgrounds.txt", "config/characters.txt", "config/music.json", "config/discord.ini", "config/text/8ball.txt", "config/text/gimp.txt", "config/text/praise.txt", "config/text/reprimands.txt", "config/text/commandhelp.json", "config/text/cdns.txt", "config/ipbans.json"};
+  for (const QString &l_file : l_config_files)
+  {
+    if (!fileExists(QFileInfo(l_file)))
+    {
+      zCritical(log::config) << l_file + " does not exist!";
+      return false;
+    }
+  }
+
+  // Verify areas
+  QSettings l_areas_ini("config/areas.ini", QSettings::IniFormat);
+  if (l_areas_ini.childGroups().length() < 1)
+  {
+    zCritical(log::config) << "areas.ini is invalid!";
+    return false;
+  }
+
+  // Read dices
+  QSettings l_dice_ini("config/dice.ini", QSettings::IniFormat);
+  QStringList dices = l_dice_ini.childGroups();
+
+  for (const QString &dice : dices)
+  {
+    l_dice_ini.beginGroup(dice);
+
+    int max = l_dice_ini.value("max").toInt();
+    QStringList faces;
+
+    for (int i = 1; i <= max; ++i)
+    {
+      QString key = QString::number(i);
+      if (l_dice_ini.contains(key))
+      {
+        faces.append(l_dice_ini.value(key).toString());
+      }
+      else
+      {
+        zCritical(log::config) << "dice.ini max mismatch!";
+        break;
+      }
+    }
+    self->m_commands.dice_faces[dice] = faces;
+    l_dice_ini.endGroup();
+  }
+
+  // Verify config settings
+  self->m_settings.beginGroup("Options");
+  bool ok;
+  self->m_settings.value("ms_port", 27016).toInt(&ok);
+  if (!ok)
+  {
+    zCritical(log::config) << "ms_port is not a valid port!";
+    return false;
+  }
+  self->m_settings.value("port", 27016).toInt(&ok);
+  if (!ok)
+  {
+    zCritical(log::config) << "port is not a valid port!";
+    return false;
+  }
+  self->m_settings.value("secure_port", -1).toInt(&ok);
+  if (!ok)
+  {
+    zCritical(log::config) << "secure_port is not a valid port!";
+    return false;
+  }
+
+  QString l_auth = self->m_settings.value("auth", "simple").toString().toLower();
+  if (!(l_auth == "simple" || l_auth == "advanced"))
+  {
+    zCritical(log::config) << "auth is not a valid auth type!";
+    return false;
+  }
+
+  int l_soft_limit = self->m_settings.value("packet_rate_limit_soft", 10).toInt(&ok);
+  if (!ok)
+  {
+    zCritical(log::config) << "packet_rate_limit_soft is not a valid limit!";
+    return false;
+  }
+  if (l_soft_limit <= 0)
+  {
+    zWarning(log::config) << "packet_rate_limit_soft is 0 or less, warning threshold is disabled!";
+  }
+
+  int l_hard_limit = self->m_settings.value("packet_rate_limit_hard", 20).toInt(&ok);
+  if (!ok)
+  {
+    zCritical(log::config) << "packet_rate_limit_hard is not a valid limit!";
+    return false;
+  }
+  else if (l_soft_limit > 0 && l_hard_limit <= l_soft_limit)
+  {
+    zCritical(log::config) << "packet_rate_limit_hard must be greater than packet_rate_limit_soft!";
+    return false;
+  }
+  if (l_hard_limit <= 0)
+  {
+    zWarning(log::config) << "packet_rate_limit_hard is 0 or less, rate limiting is disabled!";
+  }
+
+  self->m_settings.endGroup();
+  self->m_commands.magic_8ball = (loadConfigFile("8ball"));
+  self->m_commands.praises = (loadConfigFile("praise"));
+  self->m_commands.reprimands = (loadConfigFile("reprimands"));
+  self->m_commands.gimps = (loadConfigFile("gimp"));
+  self->m_commands.filters = (loadConfigFile("filter"));
+  self->m_commands.cdns = (loadConfigFile("cdns"));
+  if (self->m_commands.cdns.isEmpty())
+  {
+    self->m_commands.cdns = QStringList{"cdn.discord.com"};
+  }
+
+  return true;
+}
+
+QString kenji::ConfigManager::bindIP()
+{
+  return self->m_settings.value("Options/bind_ip", "all").toString();
+}
+
+QStringList kenji::ConfigManager::charlist()
+{
+  QStringList l_charlist;
+  QFile l_file("config/characters.txt");
+  l_file.open(QIODevice::ReadOnly | QIODevice::Text);
+  while (!l_file.atEnd())
+  {
+    l_charlist.append(QString::fromUtf8(l_file.readLine().trimmed()));
+  }
+  l_file.close();
+
+  return l_charlist;
+}
+
+QStringList kenji::ConfigManager::backgrounds()
+{
+  QStringList l_backgrounds;
+  QFile l_file("config/backgrounds.txt");
+  l_file.open(QIODevice::ReadOnly | QIODevice::Text);
+  while (!l_file.atEnd())
+  {
+    l_backgrounds.append(l_file.readLine().trimmed());
+  }
+  l_file.close();
+
+  return l_backgrounds;
+}
+
+QList<theory::MusicPlaylist> kenji::ConfigManager::musiclist()
+{
+  QFile l_music_json("config/music.json");
+  l_music_json.open(QIODevice::ReadOnly | QIODevice::Text);
+
+  QJsonParseError l_error;
+  QJsonDocument l_music_list_json = QJsonDocument::fromJson(l_music_json.readAll(), &l_error);
+  if (!(l_error.error == QJsonParseError::NoError))
+  { // Non-Terminating error.
+    zWarning(log::config) << "Unable to load musiclist. The following error was encounted : " + l_error.errorString();
+    return {}; // Server can still run without music.
+  }
+
+  self->m_musicList.clear();
+
+  // Kenji expects the musiclist to be contained in a JSON array, even if its only a single category.
+  QJsonArray l_Json_root_array = l_music_list_json.array();
+  QJsonObject l_child_obj;
+  QJsonArray l_child_array;
+
+  for (int i = 0; i < l_Json_root_array.size(); i++)
+  { // Iterate trough entire JSON file to assemble musiclist
+    l_child_obj = l_Json_root_array.at(i).toObject();
+
+    theory::MusicPlaylist l_playlist;
+
+    // Technically not a requirement, but neat for organisation.
+    l_playlist.name = l_child_obj["category"].toString();
+    if (l_playlist.name.isEmpty())
+    {
+      zWarning(log::config) << "Category name not set. This may cause the musiclist to be displayed incorrectly.";
     }
 
-    // Verify config files
-    QStringList l_config_files{"config/config.ini", "config/areas.ini", "config/backgrounds.txt", "config/characters.txt", "config/music.json",
-                               "config/discord.ini", "config/text/8ball.txt", "config/text/gimp.txt", "config/text/praise.txt",
-                               "config/text/reprimands.txt", "config/text/commandhelp.json", "config/text/cdns.txt", "config/ipbans.json"};
-    for (const QString &l_file : l_config_files) {
-        if (!fileExists(QFileInfo(l_file))) {
-            qCritical() << l_file + " does not exist!";
-            return false;
-        }
+    l_child_array = l_child_obj["songs"].toArray();
+    for (int i = 0; i < l_child_array.size(); i++)
+    { // Inner for loop because a category can contain multiple songs.
+      QJsonObject l_song_obj = l_child_array.at(i).toObject();
+      QString l_song_name = l_song_obj["name"].toString();
+      QString l_real_name = l_song_obj["realname"].toString();
+
+      theory::MusicTrack l_track;
+      if (l_real_name.isEmpty())
+      {
+        l_track.fileName = l_song_name;
+      }
+      else
+      {
+        l_track.fileName = l_real_name;
+        l_track.caption = l_song_name;
+      }
+
+      const theory::TrackLength l_song_duration = l_song_obj["length"].toVariant().toInt();
+      if (l_song_duration > 0)
+      {
+        l_track.length = l_song_duration;
+      }
+
+      l_playlist.tracks.append(l_track);
     }
 
-    // Verify areas
-    QSettings l_areas_ini("config/areas.ini", QSettings::IniFormat);
-    if (l_areas_ini.childGroups().length() < 1) {
-        qCritical() << "areas.ini is invalid!";
-        return false;
+    self->m_musicList.append(l_playlist);
+  }
+  l_music_json.close();
+
+  return self->m_musicList;
+}
+
+void kenji::ConfigManager::loadCommandHelp()
+{
+  QFile l_help_json("config/text/commandhelp.json");
+  l_help_json.open(QIODevice::ReadOnly | QIODevice::Text);
+
+  QJsonParseError l_error;
+  QJsonDocument l_help_list_json = QJsonDocument::fromJson(l_help_json.readAll(), &l_error);
+  if (!(l_error.error == QJsonParseError::NoError))
+  { // Non-Terminating error.
+    zWarning(log::config) << "Unable to load help information. The following error occurred: " + l_error.errorString();
+  }
+
+  // Kenji expects the helpfile to contain multiple entires, so it always checks for an array first.
+  QJsonArray l_Json_root_array = l_help_list_json.array();
+  QJsonObject l_child_obj;
+  QJsonArray l_names;
+
+  for (int i = 0; i < l_Json_root_array.size(); i++)
+  {
+    l_child_obj = l_Json_root_array.at(i).toObject();
+    l_names = l_child_obj["names"].toArray();
+    QString l_usage = l_child_obj["usage"].toString();
+    QString l_text = l_child_obj["text"].toString();
+
+    for (int j = 0; j < l_names.size(); j++)
+    {
+      QString l_name = l_names.at(j).toString();
+      if (!l_name.isEmpty())
+      {
+        help l_help_information = {.usage = l_usage, .text = l_text};
+
+        self->m_commands_help.insert(l_name, l_help_information);
+      }
     }
+  }
+}
 
-    // Read dices
-    QSettings l_dice_ini("config/dice.ini", QSettings::IniFormat);
-    QStringList dices = l_dice_ini.childGroups();
+QSettings *kenji::ConfigManager::areaData()
+{
+  return &self->m_areas;
+}
 
-    for (const QString &dice : dices) {
-        l_dice_ini.beginGroup(dice);
+QSettings *kenji::ConfigManager::ambience()
+{
+  return &self->m_ambience;
+}
 
-        int max = l_dice_ini.value("max").toInt();
-        QStringList faces;
+QStringList kenji::ConfigManager::sanitizedAreaNames()
+{
+  QStringList l_area_names = self->m_areas.childGroups(); // invisibly does a lexicographical sort, because Qt is great like that
+  std::sort(l_area_names.begin(), l_area_names.end(), [](const QString &a, const QString &b) { return a.split(":")[0].toInt() < b.split(":")[0].toInt(); });
+  QStringList l_sanitized_area_names;
+  for (const QString &areaName : qAsConst(l_area_names))
+  {
+    QStringList l_nameSplit = areaName.split(":");
+    l_nameSplit.removeFirst();
+    QString l_area_name_sanitized = l_nameSplit.join(":");
+    l_sanitized_area_names.append(l_area_name_sanitized);
+  }
+  return l_sanitized_area_names;
+}
 
-        for (int i = 1; i <= max; ++i) {
-            QString key = QString::number(i);
-            if (l_dice_ini.contains(key)) {
-                faces.append(l_dice_ini.value(key).toString());
-            }
-            else {
-                qCritical() << "dice.ini max mismatch!";
-                break;
-            }
-        }
-        m_commands->dice_faces[dice] = faces;
-        l_dice_ini.endGroup();
+QStringList kenji::ConfigManager::iprangeBans()
+{
+  QFile l_json_file("config/ipbans.json");
+  l_json_file.open(QIODevice::ReadOnly | QIODevice::Text);
+
+  QJsonParseError l_error;
+  QJsonDocument l_ip_bans = QJsonDocument::fromJson(l_json_file.readAll(), &l_error);
+  if (l_error.error != QJsonParseError::NoError)
+  {
+    zDebug(log::config) << "Unable to parse JSON file. Error:" << l_error.errorString();
+    return {};
+  }
+
+  QJsonObject l_json_obj = l_ip_bans.object();
+
+  QStringList l_range_bans;
+  l_range_bans.append(l_json_obj["ip_range"].toVariant().toStringList());
+
+  if (QFile::exists("storage/asn.sqlite3"))
+  {
+    QSqlDatabase asn_db = QSqlDatabase::addDatabase("QSQLITE", "ASN");
+    asn_db.setDatabaseName("storage/asn.sqlite3");
+    asn_db.open();
+
+    // This is a dumb hack. Idk how else I can do this, but who gives a shit?
+    QSqlQuery query("SELECT ip FROM maxmind WHERE asn in (" + l_json_obj["asn"].toVariant().toStringList().join(",") + ")", asn_db);
+    query.exec();
+    while (query.next())
+    {
+      l_range_bans.append(query.value(0).toString());
     }
-
-    // Verify config settings
-    m_settings->beginGroup("Options");
-    bool ok;
-    m_settings->value("ms_port", 27016).toInt(&ok);
-    if (!ok) {
-        qCritical("ms_port is not a valid port!");
-        return false;
-    }
-    m_settings->value("port", 27016).toInt(&ok);
-    if (!ok) {
-        qCritical("port is not a valid port!");
-        return false;
-    }
-    m_settings->value("secure_port", -1).toInt(&ok);
-    if (!ok) {
-        qCritical("secure_port is not a valid port!");
-        return false;
-    }
-
-    QString l_auth = m_settings->value("auth", "simple").toString().toLower();
-    if (!(l_auth == "simple" || l_auth == "advanced")) {
-        qCritical("auth is not a valid auth type!");
-        return false;
-    }
-
-    int l_soft_limit = m_settings->value("packet_rate_limit_soft", 10).toInt(&ok);
-    if (!ok) {
-        qCritical("packet_rate_limit_soft is not a valid limit!");
-        return false;
-    }
-    if (l_soft_limit <= 0) {
-        qWarning("packet_rate_limit_soft is 0 or less, warning threshold is disabled!");
-    }
-
-    int l_hard_limit = m_settings->value("packet_rate_limit_hard", 20).toInt(&ok);
-    if (!ok) {
-        qCritical("packet_rate_limit_hard is not a valid limit!");
-        return false;
-    }
-    else if (l_soft_limit > 0 && l_hard_limit <= l_soft_limit) {
-        qCritical("packet_rate_limit_hard must be greater than packet_rate_limit_soft!");
-        return false;
-    }
-    if (l_hard_limit <= 0) {
-        qWarning("packet_rate_limit_hard is 0 or less, rate limiting is disabled!");
-    }
-
-    m_settings->endGroup();
-    m_commands->magic_8ball = (loadConfigFile("8ball"));
-    m_commands->praises = (loadConfigFile("praise"));
-    m_commands->reprimands = (loadConfigFile("reprimands"));
-    m_commands->gimps = (loadConfigFile("gimp"));
-    m_commands->filters = (loadConfigFile("filter"));
-    m_commands->cdns = (loadConfigFile("cdns"));
-    if (m_commands->cdns.isEmpty())
-        m_commands->cdns = QStringList{"cdn.discord.com"};
-
-    return true;
-}
-
-QString ConfigManager::bindIP()
-{
-    return m_settings->value("Options/bind_ip", "all").toString();
-}
-
-QStringList ConfigManager::charlist()
-{
-    QStringList l_charlist;
-    QFile l_file("config/characters.txt");
-    l_file.open(QIODevice::ReadOnly | QIODevice::Text);
-    while (!l_file.atEnd()) {
-        l_charlist.append(l_file.readLine().trimmed());
-    }
-    l_file.close();
-
-    return l_charlist;
-}
-
-QStringList ConfigManager::backgrounds()
-{
-    QStringList l_backgrounds;
-    QFile l_file("config/backgrounds.txt");
-    l_file.open(QIODevice::ReadOnly | QIODevice::Text);
-    while (!l_file.atEnd()) {
-        l_backgrounds.append(l_file.readLine().trimmed());
-    }
-    l_file.close();
-
-    return l_backgrounds;
-}
-
-MusicList ConfigManager::musiclist()
-{
-    QFile l_music_json("config/music.json");
-    l_music_json.open(QIODevice::ReadOnly | QIODevice::Text);
-
-    QJsonParseError l_error;
-    QJsonDocument l_music_list_json = QJsonDocument::fromJson(l_music_json.readAll(), &l_error);
-    if (!(l_error.error == QJsonParseError::NoError)) { // Non-Terminating error.
-        qWarning() << "Unable to load musiclist. The following error was encounted : " + l_error.errorString();
-        return QMap<QString, QPair<QString, int>>{}; // Server can still run without music.
-    }
-
-    // Make sure the list is empty before appending new data.
-    if (!m_ordered_list->empty()) {
-        m_ordered_list->clear();
-    }
-
-    // Akashi expects the musiclist to be contained in a JSON array, even if its only a single category.
-    QJsonArray l_Json_root_array = l_music_list_json.array();
-    QJsonObject l_child_obj;
-    QJsonArray l_child_array;
-
-    for (int i = 0; i < l_Json_root_array.size(); i++) { // Iterate trough entire JSON file to assemble musiclist
-        l_child_obj = l_Json_root_array.at(i).toObject();
-
-        // Technically not a requirement, but neat for organisation.
-        QString l_category_name = l_child_obj["category"].toString();
-        if (!l_category_name.isEmpty()) {
-            m_musicList->insert(l_category_name, {l_category_name, 0});
-            m_ordered_list->append(l_category_name);
-        }
-        else {
-            qWarning() << "Category name not set. This may cause the musiclist to be displayed incorrectly.";
-        }
-
-        l_child_array = l_child_obj["songs"].toArray();
-        for (int i = 0; i < l_child_array.size(); i++) { // Inner for loop because a category can contain multiple songs.
-            QJsonObject l_song_obj = l_child_array.at(i).toObject();
-            QString l_song_name = l_song_obj["name"].toString();
-            QString l_real_name = l_song_obj["realname"].toString();
-            if (l_real_name.isEmpty()) {
-                l_real_name = l_song_name;
-            }
-            int l_song_duration = l_song_obj["length"].toVariant().toInt();
-            m_musicList->insert(l_song_name, {l_real_name, l_song_duration});
-            m_ordered_list->append(l_song_name);
-        }
-    }
-    l_music_json.close();
-
-    return *m_musicList;
+    asn_db.close();
+  }
+  l_range_bans.removeDuplicates();
+  return l_range_bans;
 }
 
-QStringList ConfigManager::ordered_songs()
+void kenji::ConfigManager::reloadSettings()
 {
-    return *m_ordered_list;
+  self->m_settings.sync();
+  self->m_discord.sync();
+  self->m_logtext.sync();
 }
 
-void ConfigManager::loadCommandHelp()
+QStringList kenji::ConfigManager::loadConfigFile(const QString &filename)
 {
-    QFile l_help_json("config/text/commandhelp.json");
-    l_help_json.open(QIODevice::ReadOnly | QIODevice::Text);
-
-    QJsonParseError l_error;
-    QJsonDocument l_help_list_json = QJsonDocument::fromJson(l_help_json.readAll(), &l_error);
-    if (!(l_error.error == QJsonParseError::NoError)) { // Non-Terminating error.
-        qWarning() << "Unable to load help information. The following error occurred: " + l_error.errorString();
-    }
-
-    // Akashi expects the helpfile to contain multiple entires, so it always checks for an array first.
-    QJsonArray l_Json_root_array = l_help_list_json.array();
-    QJsonObject l_child_obj;
-    QJsonArray l_names;
-
-    for (int i = 0; i < l_Json_root_array.size(); i++) {
-        l_child_obj = l_Json_root_array.at(i).toObject();
-        l_names = l_child_obj["names"].toArray();
-        QString l_usage = l_child_obj["usage"].toString();
-        QString l_text = l_child_obj["text"].toString();
-
-        for (int j = 0; j < l_names.size(); j++) {
-            QString l_name = l_names.at(j).toString();
-            if (!l_name.isEmpty()) {
-                help l_help_information = {
-                    .usage = l_usage,
-                    .text = l_text};
-
-                m_commands_help->insert(l_name, l_help_information);
-            }
-        }
-    }
+  QStringList stringlist;
+  QFile l_file("config/text/" + filename + ".txt");
+  l_file.open(QIODevice::ReadOnly | QIODevice::Text);
+  while (!(l_file.atEnd()))
+  {
+    stringlist.append(l_file.readLine().trimmed());
+  }
+  l_file.close();
+  return stringlist;
 }
 
-QSettings *ConfigManager::areaData()
+int kenji::ConfigManager::maxPlayers()
 {
-    return m_areas;
+  bool ok;
+  int l_players = self->m_settings.value("Options/max_players", 100).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "max_players is not an int!";
+    l_players = 100;
+  }
+  return l_players;
 }
 
-QSettings *ConfigManager::ambience()
+int kenji::ConfigManager::serverPort()
 {
-    return m_ambience;
-}
+  if (self->m_settings.contains("Options/webao_port"))
+  {
+    zWarning(log::config) << "webao_port is deprecated, use port instead";
+    return self->m_settings.value("Options/webao_port", 27016).toInt();
+  }
 
-QStringList ConfigManager::sanitizedAreaNames()
-{
-    QStringList l_area_names = m_areas->childGroups(); // invisibly does a lexicographical sort, because Qt is great like that
-    std::sort(l_area_names.begin(), l_area_names.end(), [](const QString &a, const QString &b) { return a.split(":")[0].toInt() < b.split(":")[0].toInt(); });
-    QStringList l_sanitized_area_names;
-    for (const QString &areaName : qAsConst(l_area_names)) {
-        QStringList l_nameSplit = areaName.split(":");
-        l_nameSplit.removeFirst();
-        QString l_area_name_sanitized = l_nameSplit.join(":");
-        l_sanitized_area_names.append(l_area_name_sanitized);
-    }
-    return l_sanitized_area_names;
+  return self->m_settings.value("Options/port", 27016).toInt();
 }
 
-QStringList ConfigManager::rawAreaNames()
+int kenji::ConfigManager::securePort()
 {
-    return m_areas->childGroups();
+  return self->m_settings.value("Options/secure_port", -1).toInt();
 }
 
-QStringList ConfigManager::iprangeBans()
+QString kenji::ConfigManager::serverDescription()
 {
-    QFile l_json_file("config/ipbans.json");
-    l_json_file.open(QIODevice::ReadOnly | QIODevice::Text);
-
-    QJsonParseError l_error;
-    QJsonDocument l_ip_bans = QJsonDocument::fromJson(l_json_file.readAll(), &l_error);
-    if (l_error.error != QJsonParseError::NoError) {
-        qDebug() << "Unable to parse JSON file. Error:" << l_error.errorString();
-        return {};
-    }
-
-    QJsonObject l_json_obj = l_ip_bans.object();
-
-    QStringList l_range_bans;
-    l_range_bans.append(l_json_obj["ip_range"].toVariant().toStringList());
-
-    if (QFile::exists("storage/asn.sqlite3")) {
-        QSqlDatabase asn_db = QSqlDatabase::addDatabase("QSQLITE", "ASN");
-        asn_db.setDatabaseName("storage/asn.sqlite3");
-        asn_db.open();
-
-        // This is a dumb hack. Idk how else I can do this, but who gives a shit?
-        QSqlQuery query("SELECT ip FROM maxmind WHERE asn in (" + l_json_obj["asn"].toVariant().toStringList().join(",") + ")", asn_db);
-        query.exec();
-        while (query.next()) {
-            l_range_bans.append(query.value(0).toString());
-        }
-        asn_db.close();
-    }
-    l_range_bans.removeDuplicates();
-    return l_range_bans;
+  return self->m_settings.value("Options/server_description", "This is my flashy new server!").toString();
 }
 
-void ConfigManager::reloadSettings()
+QString kenji::ConfigManager::serverName()
 {
-    m_settings->sync();
-    m_discord->sync();
-    m_logtext->sync();
+  return self->m_settings.value("Options/server_name", "An Unnamed Server").toString();
 }
 
-QStringList ConfigManager::loadConfigFile(const QString filename)
+QString kenji::ConfigManager::serverNickname()
 {
-    QStringList stringlist;
-    QFile l_file("config/text/" + filename + ".txt");
-    l_file.open(QIODevice::ReadOnly | QIODevice::Text);
-    while (!(l_file.atEnd())) {
-        stringlist.append(l_file.readLine().trimmed());
-    }
-    l_file.close();
-    return stringlist;
+  QString l_tag = self->m_settings.value("Options/server_nickname").toString();
+  return l_tag.isEmpty() ? serverName() : l_tag;
 }
 
-int ConfigManager::maxPlayers()
+QString kenji::ConfigManager::motd()
 {
-    bool ok;
-    int l_players = m_settings->value("Options/max_players", 100).toInt(&ok);
-    if (!ok) {
-        qWarning("max_players is not an int!");
-        l_players = 100;
-    }
-    return l_players;
+  return self->m_settings.value("Options/motd", "MOTD not set").toString();
 }
 
-int ConfigManager::serverPort()
+kenji::DataTypes::AuthType kenji::ConfigManager::authType()
 {
-    if (m_settings->contains("Options/webao_port")) {
-        qWarning("webao_port is deprecated, use port instead");
-        return m_settings->value("Options/webao_port", 27016).toInt();
-    }
-
-    return m_settings->value("Options/port", 27016).toInt();
+  QString l_auth = self->m_settings.value("Options/auth", "simple").toString().toUpper();
+  return toDataType<DataTypes::AuthType>(l_auth);
 }
 
-int ConfigManager::securePort()
+QString kenji::ConfigManager::modpass()
 {
-    return m_settings->value("Options/secure_port", -1).toInt();
+  return self->m_settings.value("Options/modpass", "changeme").toString();
 }
 
-QString ConfigManager::serverDescription()
+int kenji::ConfigManager::logBuffer()
 {
-    return m_settings->value("Options/server_description", "This is my flashy new server!").toString();
+  bool ok;
+  int l_buffer = self->m_settings.value("Options/logbuffer", 500).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "logbuffer is not an int!";
+    l_buffer = 500;
+  }
+  return l_buffer;
 }
 
-QString ConfigManager::serverName()
+kenji::DataTypes::LogType kenji::ConfigManager::loggingType()
 {
-    return m_settings->value("Options/server_name", "An Unnamed Server").toString();
+  QString l_log = self->m_settings.value("Options/logging", "modcall").toString().toUpper();
+  return toDataType<DataTypes::LogType>(l_log);
 }
 
-QString ConfigManager::serverNickname()
+int kenji::ConfigManager::maxStatements()
+{
+  bool ok;
+  int l_max = self->m_settings.value("Options/maximum_statements", 10).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "maximum_statements is not an int!";
+    l_max = 10;
+  }
+  return l_max;
+}
+int kenji::ConfigManager::multiClientLimit()
 {
-    QString l_tag = m_settings->value("Options/server_nickname").toString();
-    return l_tag.isEmpty() ? serverName() : l_tag;
+  bool ok;
+  int l_limit = self->m_settings.value("Options/multiclient_limit", 15).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "multiclient_limit is not an int!";
+    l_limit = 15;
+  }
+  return l_limit;
 }
 
-QString ConfigManager::motd()
+int kenji::ConfigManager::maxNameLength()
 {
-    return m_settings->value("Options/motd", "MOTD not set").toString();
+  bool ok;
+  int l_max = self->m_settings.value("Options/maximum_name_length", 30).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "maximum_name_length is not an int!";
+    l_max = 30;
+  }
+  return l_max;
 }
 
-bool ConfigManager::webaoEnabled()
+int kenji::ConfigManager::maxIcNameLength()
 {
-    return m_settings->value("Options/webao_enable", false).toBool();
+  bool ok;
+  int l_max = self->m_settings.value("Options/maximum_ic_name_length", 30).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "maximum_ic_name_length is not an int!";
+    l_max = 30;
+  }
+  return l_max;
 }
 
-DataTypes::AuthType ConfigManager::authType()
+int kenji::ConfigManager::maxTextLength()
 {
-    QString l_auth = m_settings->value("Options/auth", "simple").toString().toUpper();
-    return toDataType<DataTypes::AuthType>(l_auth);
+  bool ok;
+  int l_max = self->m_settings.value("Options/maximum_text_length", 256).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "maximum_text_length is not an int!";
+    l_max = 256;
+  }
+  return l_max;
 }
 
-QString ConfigManager::modpass()
+int kenji::ConfigManager::maxIcTextLength()
 {
-    return m_settings->value("Options/modpass", "changeme").toString();
+  bool ok;
+  int l_max = self->m_settings.value("Options/maximum_ic_text_length", 256).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "maximum_ic_text_length is not an int!";
+    l_max = 256;
+  }
+  return l_max;
 }
 
-int ConfigManager::logBuffer()
+int kenji::ConfigManager::messageFloodguard()
 {
-    bool ok;
-    int l_buffer = m_settings->value("Options/logbuffer", 500).toInt(&ok);
-    if (!ok) {
-        qWarning("logbuffer is not an int!");
-        l_buffer = 500;
-    }
-    return l_buffer;
+  bool ok;
+  int l_flood = self->m_settings.value("Options/message_floodguard", 250).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "message_floodguard is not an int!";
+    l_flood = 250;
+  }
+  return l_flood;
 }
 
-DataTypes::LogType ConfigManager::loggingType()
+int kenji::ConfigManager::globalMessageFloodguard()
 {
-    QString l_log = m_settings->value("Options/logging", "modcall").toString().toUpper();
-    return toDataType<DataTypes::LogType>(l_log);
+  bool ok;
+  int l_flood = self->m_settings.value("Options/global_message_floodguard", 0).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "global_message_floodguard is not an int!";
+    l_flood = 0;
+  }
+  return l_flood;
 }
 
-int ConfigManager::maxStatements()
+int kenji::ConfigManager::packetRateLimitSoft()
 {
-    bool ok;
-    int l_max = m_settings->value("Options/maximum_statements", 10).toInt(&ok);
-    if (!ok) {
-        qWarning("maximum_statements is not an int!");
-        l_max = 10;
-    }
-    return l_max;
-}
-int ConfigManager::multiClientLimit()
+  bool ok;
+  int l_limit = self->m_settings.value("Options/packet_rate_limit_soft", 10).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "packet_rate_limit_soft is not an int!";
+    l_limit = 10;
+  }
+  return l_limit;
+}
+
+int kenji::ConfigManager::packetRateLimitHard()
+{
+  bool ok;
+  int l_limit = self->m_settings.value("Options/packet_rate_limit_hard", 20).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "packet_rate_limit_hard is not an int!";
+    l_limit = 20;
+  }
+  return l_limit;
+}
+
+int kenji::ConfigManager::maxPacketSize()
+{
+  bool ok;
+  int l_size = self->m_settings.value("Options/max_packet_size", 65536).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "max_packet_size is not an int!";
+    l_size = 65536;
+  }
+  return l_size;
+}
+
+int kenji::ConfigManager::modcallReasonLimit()
 {
-    bool ok;
-    int l_limit = m_settings->value("Options/multiclient_limit", 15).toInt(&ok);
-    if (!ok) {
-        qWarning("multiclient_limit is not an int!");
-        l_limit = 15;
-    }
-    return l_limit;
+  bool ok;
+  int l_limit = self->m_settings.value("Options/modcall_reason_limit", 255).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "modcall_reason_limit is not an int!";
+    l_limit = 255;
+  }
+  return l_limit;
 }
 
-int ConfigManager::maxCharacters()
+int kenji::ConfigManager::infoRateLimit()
 {
-    bool ok;
-    int l_max = m_settings->value("Options/maximum_characters", 256).toInt(&ok);
-    if (!ok) {
-        qWarning("maximum_characters is not an int!");
-        l_max = 256;
-    }
-    return l_max;
+  bool ok;
+  int l_limit = self->m_settings.value("Options/info_rate_limit", 100).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "info_rate_limit is not an int!";
+    l_limit = 100;
+  }
+  return l_limit;
 }
 
-int ConfigManager::messageFloodguard()
+int kenji::ConfigManager::handshakeTimeout()
 {
-    bool ok;
-    int l_flood = m_settings->value("Options/message_floodguard", 250).toInt(&ok);
-    if (!ok) {
-        qWarning("message_floodguard is not an int!");
-        l_flood = 250;
-    }
-    return l_flood;
+  bool ok;
+  int l_timeout = self->m_settings.value("Options/handshake_timeout", 10).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "handshake_timeout is not an int!";
+    l_timeout = 10;
+  }
+  return l_timeout;
 }
 
-int ConfigManager::globalMessageFloodguard()
+int kenji::ConfigManager::sessionTimeout()
 {
-    bool ok;
-    int l_flood = m_settings->value("Options/global_message_floodguard", 0).toInt(&ok);
-    if (!ok) {
-        qWarning("global_message_floodguard is not an int!");
-        l_flood = 0;
-    }
-    return l_flood;
+  bool ok;
+  int l_timeout = self->m_settings.value("Options/session_timeout", 180).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "session_timeout is not an int!";
+    l_timeout = 180;
+  }
+  return l_timeout;
 }
 
-int ConfigManager::packetRateLimitSoft()
+int kenji::ConfigManager::connectionHeadroom()
 {
-    bool ok;
-    int l_limit = m_settings->value("Options/packet_rate_limit_soft", 10).toInt(&ok);
-    if (!ok) {
-        qWarning("packet_rate_limit_soft is not an int!");
-        l_limit = 10;
-    }
-    return l_limit;
+  bool ok;
+  int l_headroom = self->m_settings.value("Options/connection_headroom", 20).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "connection_headroom is not an int!";
+    l_headroom = 20;
+  }
+  return l_headroom;
 }
 
-int ConfigManager::packetRateLimitHard()
+QUrl kenji::ConfigManager::assetUrl()
 {
-    bool ok;
-    int l_limit = m_settings->value("Options/packet_rate_limit_hard", 20).toInt(&ok);
-    if (!ok) {
-        qWarning("packet_rate_limit_hard is not an int!");
-        l_limit = 20;
-    }
-    return l_limit;
+  QByteArray l_url = self->m_settings.value("Options/asset_url", "").toString().toUtf8();
+  if (QUrl(l_url).isValid())
+  {
+    return QUrl(l_url);
+  }
+  else
+  {
+    zWarning(log::config) << "asset_url is not a valid url!";
+    return QUrl(NULL);
+  }
 }
 
-QUrl ConfigManager::assetUrl()
+int kenji::ConfigManager::diceMaxValue()
 {
-    QByteArray l_url = m_settings->value("Options/asset_url", "").toString().toUtf8();
-    if (QUrl(l_url).isValid()) {
-        return QUrl(l_url);
-    }
-    else {
-        qWarning("asset_url is not a valid url!");
-        return QUrl(NULL);
-    }
+  bool ok;
+  int l_value = self->m_settings.value("Dice/max_value", 100).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "max_value is not an int!";
+    l_value = 100;
+  }
+  return l_value;
 }
 
-int ConfigManager::diceMaxValue()
+int kenji::ConfigManager::diceMaxDice()
 {
-    bool ok;
-    int l_value = m_settings->value("Dice/max_value", 100).toInt(&ok);
-    if (!ok) {
-        qWarning("max_value is not an int!");
-        l_value = 100;
-    }
-    return l_value;
+  bool ok;
+  int l_dice = self->m_settings.value("Dice/max_dice", 100).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "max_dice is not an int!";
+    l_dice = 100;
+  }
+  return l_dice;
 }
 
-int ConfigManager::diceMaxDice()
+bool kenji::ConfigManager::discordWebhookEnabled()
 {
-    bool ok;
-    int l_dice = m_settings->value("Dice/max_dice", 100).toInt(&ok);
-    if (!ok) {
-        qWarning("max_dice is not an int!");
-        l_dice = 100;
-    }
-    return l_dice;
+  return self->m_discord.value("Discord/webhook_enabled", false).toBool();
 }
 
-bool ConfigManager::discordWebhookEnabled()
+bool kenji::ConfigManager::discordModcallWebhookEnabled()
 {
-    return m_discord->value("Discord/webhook_enabled", false).toBool();
+  return self->m_discord.value("Discord/webhook_modcall_enabled", false).toBool();
 }
 
-bool ConfigManager::discordModcallWebhookEnabled()
+QString kenji::ConfigManager::discordModcallWebhookUrl()
 {
-    return m_discord->value("Discord/webhook_modcall_enabled", false).toBool();
+  return self->m_discord.value("Discord/webhook_modcall_url", "").toString();
 }
 
-QString ConfigManager::discordModcallWebhookUrl()
+QString kenji::ConfigManager::discordModcallWebhookContent()
 {
-    return m_discord->value("Discord/webhook_modcall_url", "").toString();
+  return self->m_discord.value("Discord/webhook_modcall_content", "").toString();
 }
 
-QString ConfigManager::discordModcallWebhookContent()
+bool kenji::ConfigManager::discordModcallWebhookSendFile()
 {
-    return m_discord->value("Discord/webhook_modcall_content", "").toString();
+  return self->m_discord.value("Discord/webhook_modcall_sendfile", false).toBool();
 }
 
-bool ConfigManager::discordModcallWebhookSendFile()
+bool kenji::ConfigManager::discordBanWebhookEnabled()
 {
-    return m_discord->value("Discord/webhook_modcall_sendfile", false).toBool();
+  return self->m_discord.value("Discord/webhook_ban_enabled", false).toBool();
 }
 
-bool ConfigManager::discordBanWebhookEnabled()
+QString kenji::ConfigManager::discordBanWebhookUrl()
 {
-    return m_discord->value("Discord/webhook_ban_enabled", false).toBool();
+  return self->m_discord.value("Discord/webhook_ban_url", "").toString();
 }
 
-QString ConfigManager::discordBanWebhookUrl()
+QString kenji::ConfigManager::discordWebhookColor()
 {
-    return m_discord->value("Discord/webhook_ban_url", "").toString();
+  const QString l_default_color = "13312842";
+  QString l_color = self->m_discord.value("Discord/webhook_color", l_default_color).toString();
+  if (l_color.isEmpty())
+  {
+    return l_default_color;
+  }
+  else
+  {
+    return l_color;
+  }
 }
 
-QString ConfigManager::discordWebhookColor()
+bool kenji::ConfigManager::passwordRequirements()
 {
-    const QString l_default_color = "13312842";
-    QString l_color = m_discord->value("Discord/webhook_color", l_default_color).toString();
-    if (l_color.isEmpty()) {
-        return l_default_color;
-    }
-    else {
-        return l_color;
-    }
+  return self->m_settings.value("Password/password_requirements", true).toBool();
 }
 
-bool ConfigManager::passwordRequirements()
+int kenji::ConfigManager::passwordMinLength()
 {
-    return m_settings->value("Password/password_requirements", true).toBool();
+  bool ok;
+  int l_min = self->m_settings.value("Password/pass_min_length", 8).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "pass_min_length is not an int!";
+    l_min = 8;
+  }
+  return l_min;
 }
 
-int ConfigManager::passwordMinLength()
+int kenji::ConfigManager::passwordMaxLength()
 {
-    bool ok;
-    int l_min = m_settings->value("Password/pass_min_length", 8).toInt(&ok);
-    if (!ok) {
-        qWarning("pass_min_length is not an int!");
-        l_min = 8;
-    }
-    return l_min;
+  bool ok;
+  int l_max = self->m_settings.value("Password/pass_max_length", 0).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "pass_max_length is not an int!";
+    l_max = 0;
+  }
+  return l_max;
 }
 
-int ConfigManager::passwordMaxLength()
+bool kenji::ConfigManager::passwordRequireMixCase()
 {
-    bool ok;
-    int l_max = m_settings->value("Password/pass_max_length", 0).toInt(&ok);
-    if (!ok) {
-        qWarning("pass_max_length is not an int!");
-        l_max = 0;
-    }
-    return l_max;
+  return self->m_settings.value("Password/pass_required_mix_case", true).toBool();
 }
 
-bool ConfigManager::passwordRequireMixCase()
+bool kenji::ConfigManager::passwordRequireNumbers()
 {
-    return m_settings->value("Password/pass_required_mix_case", true).toBool();
+  return self->m_settings.value("Password/pass_required_numbers", true).toBool();
 }
 
-bool ConfigManager::passwordRequireNumbers()
+bool kenji::ConfigManager::passwordRequireSpecialCharacters()
 {
-    return m_settings->value("Password/pass_required_numbers", true).toBool();
+  return self->m_settings.value("Password/pass_required_special", true).toBool();
 }
 
-bool ConfigManager::passwordRequireSpecialCharacters()
+bool kenji::ConfigManager::passwordCanContainUsername()
 {
-    return m_settings->value("Password/pass_required_special", true).toBool();
+  return self->m_settings.value("Password/pass_can_contain_username", false).toBool();
 }
 
-bool ConfigManager::passwordCanContainUsername()
+QString kenji::ConfigManager::LogText(const QString &f_logtype)
 {
-    return m_settings->value("Password/pass_can_contain_username", false).toBool();
+  return self->m_logtext.value("LogConfiguration/" + f_logtype, "").toString();
 }
 
-QString ConfigManager::LogText(QString f_logtype)
+int kenji::ConfigManager::afkTimeout()
 {
-    return m_logtext->value("LogConfiguration/" + f_logtype, "").toString();
+  bool ok;
+  int l_afk = self->m_settings.value("Options/afk_timeout", 300).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "afk_timeout is not an int!";
+    l_afk = 300;
+  }
+  return l_afk;
 }
 
-int ConfigManager::afkTimeout()
+int kenji::ConfigManager::syncInterval()
 {
-    bool ok;
-    int l_afk = m_settings->value("Options/afk_timeout", 300).toInt(&ok);
-    if (!ok) {
-        qWarning("afk_timeout is not an int!");
-        l_afk = 300;
-    }
-    return l_afk;
+  bool ok;
+  int l_interval = self->m_settings.value("Options/sync_interval", 5).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "sync_interval is not an int!";
+    l_interval = 5;
+  }
+  return qMax(1, l_interval);
 }
 
-void ConfigManager::setAuthType(const DataTypes::AuthType f_auth)
+void kenji::ConfigManager::setAuthType(const DataTypes::AuthType f_auth)
 {
-    m_settings->setValue("Options/auth", fromDataType<DataTypes::AuthType>(f_auth).toLower());
+  self->m_settings.setValue("Options/auth", fromDataType<DataTypes::AuthType>(f_auth).toLower());
 }
 
-QStringList ConfigManager::diceFaces(const QString f_name)
+QStringList kenji::ConfigManager::diceFaces(const QString &f_name)
 {
-    return m_commands->dice_faces[f_name];
+  return self->m_commands.dice_faces[f_name];
 }
 
-QStringList ConfigManager::magic8BallAnswers()
+QStringList kenji::ConfigManager::magic8BallAnswers()
 {
-    return m_commands->magic_8ball;
+  return self->m_commands.magic_8ball;
 }
 
-QStringList ConfigManager::praiseList()
+QStringList kenji::ConfigManager::praiseList()
 {
-    return m_commands->praises;
+  return self->m_commands.praises;
 }
 
-QStringList ConfigManager::reprimandsList()
+QStringList kenji::ConfigManager::reprimandsList()
 {
-    return m_commands->reprimands;
+  return self->m_commands.reprimands;
 }
 
-QStringList ConfigManager::gimpList()
+QStringList kenji::ConfigManager::gimpList()
 {
-    return m_commands->gimps;
+  return self->m_commands.gimps;
 }
 
-QStringList ConfigManager::filterList()
+QStringList kenji::ConfigManager::filterList()
 {
-    return m_commands->filters;
+  return self->m_commands.filters;
 }
 
-QStringList ConfigManager::cdnList()
+QStringList kenji::ConfigManager::cdnList()
 {
-    return m_commands->cdns;
+  return self->m_commands.cdns;
 }
 
-bool ConfigManager::publishServerEnabled()
+bool kenji::ConfigManager::publishServerEnabled()
 {
-    return m_settings->value("Advertiser/advertise", "true").toBool();
+  return self->m_settings.value("Advertiser/advertise", "true").toBool();
 }
 
-QUrl ConfigManager::serverlistURL()
+QUrl kenji::ConfigManager::serverlistURL()
 {
-    return m_settings->value("Advertiser/ms_ip", "").toUrl();
+  return self->m_settings.value("Advertiser/ms_ip", "").toUrl();
 }
 
-QString ConfigManager::serverDomainName()
+QString kenji::ConfigManager::serverDomainName()
 {
-    return m_settings->value("Advertiser/hostname", "").toString();
+  return self->m_settings.value("Advertiser/hostname", "").toString();
 }
 
-bool ConfigManager::advertiseWSProxy()
+bool kenji::ConfigManager::advertiseWSProxy()
 {
-    return m_settings->value("Advertiser/cloudflare_enabled", "false").toBool();
+  return self->m_settings.value("Advertiser/cloudflare_enabled", "false").toBool();
 }
 
-ConfigManager::help ConfigManager::commandHelp(QString f_command_name)
+kenji::ConfigManager::help kenji::ConfigManager::commandHelp(const QString &f_command_name)
 {
-    return m_commands_help->value(f_command_name);
+  return self->m_commands_help.value(f_command_name);
 }
 
-void ConfigManager::setMotd(const QString f_motd)
+void kenji::ConfigManager::setMotd(const QString &f_motd)
 {
-    m_settings->setValue("Options/motd", f_motd);
+  self->m_settings.setValue("Options/motd", f_motd);
 }
 
-bool ConfigManager::fileExists(const QFileInfo &f_file)
+bool kenji::ConfigManager::fileExists(const QFileInfo &f_file)
 {
-    return (f_file.exists() && f_file.isFile());
+  return (f_file.exists() && f_file.isFile());
 }
 
-bool ConfigManager::dirExists(const QFileInfo &f_dir)
+bool kenji::ConfigManager::dirExists(const QFileInfo &f_dir)
 {
-    return (f_dir.exists() && f_dir.isDir());
+  return (f_dir.exists() && f_dir.isDir());
 }

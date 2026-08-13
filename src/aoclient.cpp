@@ -1,29 +1,15 @@
-//////////////////////////////////////////////////////////////////////////////////////
-//    akashi - a server for Attorney Online 2                                       //
-//    Copyright (C) 2020  scatterflower                                             //
-//                                                                                  //
-//    This program is free software: you can redistribute it and/or modify          //
-//    it under the terms of the GNU Affero General Public License as                //
-//    published by the Free Software Foundation, either version 3 of the            //
-//    License, or (at your option) any later version.                               //
-//                                                                                  //
-//    This program is distributed in the hope that it will be useful,               //
-//    but WITHOUT ANY WARRANTY; without even the implied warranty of                //
-//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                 //
-//    GNU Affero General Public License for more details.                           //
-//                                                                                  //
-//    You should have received a copy of the GNU Affero General Public License      //
-//    along with this program.  If not, see <https://www.gnu.org/licenses/>.        //
-//////////////////////////////////////////////////////////////////////////////////////
 #include "aoclient.h"
 
 #include "area_data.h"
 #include "command_extension.h"
 #include "config_manager.h"
-#include "packet/packet_factory.h"
+#include "core/json_codec.h"
+#include "core/logging.h"
+#include "kenji_log.h"
+#include "network/packet_error.h"
 #include "server.h"
 
-const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
+const QMap<QString, kenji::AOClient::CommandInfo> kenji::AOClient::COMMANDS{
     {"login", {{ACLRole::NONE}, 0, &AOClient::cmdLogin}},
     {"getarea", {{ACLRole::NONE}, 0, &AOClient::cmdGetArea}},
     {"getareas", {{ACLRole::NONE}, 0, &AOClient::cmdGetAreas}},
@@ -33,8 +19,8 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
     {"rootpass", {{ACLRole::SUPER}, 1, &AOClient::cmdSetRootPass}},
     {"background", {{ACLRole::NONE}, 1, &AOClient::cmdSetBackground}},
     {"side", {{ACLRole::CM}, 0, &AOClient::cmdSetSide}},
-    {"lock_background", {{ACLRole::CM}, 0, &AOClient::cmdBgLock}},
-    {"unlock_background", {{ACLRole::CM}, 0, &AOClient::cmdBgUnlock}},
+    {"lock_background", {{ACLRole::CM, ACLRole::BGLOCK}, 0, &AOClient::cmdBgLock}},
+    {"unlock_background", {{ACLRole::CM, ACLRole::BGLOCK}, 0, &AOClient::cmdBgUnlock}},
     {"adduser", {{ACLRole::MODIFY_USERS}, 2, &AOClient::cmdAddUser}},
     {"removeuser", {{ACLRole::MODIFY_USERS}, 1, &AOClient::cmdRemoveUser}},
     {"listusers", {{ACLRole::MODIFY_USERS}, 0, &AOClient::cmdListUsers}},
@@ -148,6 +134,7 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
     {"toggle_wtce", {{ACLRole::CM}, 0, &AOClient::cmdToggleWtce}},
     {"toggle_shouts", {{ACLRole::CM}, 0, &AOClient::cmdToggleShouts}},
     {"kick_other", {{ACLRole::NONE}, 0, &AOClient::cmdKickOther}},
+    {"dc", {{ACLRole::NONE}, 0, &AOClient::cmdDc}},
     {"jukebox_skip", {{ACLRole::CM}, 0, &AOClient::cmdJukeboxSkip}},
     {"play_ambience", {{ACLRole::NONE}, 1, &AOClient::cmdPlayAmbience}},
     {"medieval", {{ACLRole::MUTE}, 1, &AOClient::cmdMedieval}},
@@ -155,479 +142,557 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
     {"medievalmode", {{ACLRole::MUTE}, 0, &AOClient::cmdMedievalMode}},
 };
 
-void AOClient::clientDisconnected()
+kenji::AOClient::SessionStatus kenji::AOClient::sessionStatus() const
 {
-#ifdef NET_DEBUG
-    qDebug() << m_remote_ip.toString() << "disconnected";
-#endif
-    if (m_joined) {
-        server->getAreaById(areaId())->removeClient(server->getCharID(character()), clientId());
-        arup(ARUPType::PLAYER_COUNT, true);
-    }
-
-    if (character() != "") {
-        server->updateCharsTaken(server->getAreaById(areaId()));
-    }
-
-    bool l_updateLocks = false;
-
-    const QVector<AreaData *> l_areas = server->getAreas();
-    for (AreaData *l_area : l_areas) {
-        if (l_area->invited().contains(m_id)) {
-            l_area->uninvite(m_id);
-        }
-
-        l_updateLocks = l_updateLocks || l_area->removeOwner(clientId());
-    }
-
-    if (l_updateLocks) {
-        arup(ARUPType::LOCKED, true);
-    }
-    arup(ARUPType::CM, true);
-    emit clientSuccessfullyDisconnected(clientId());
+  return m_session_status;
 }
 
-void AOClient::handlePacket(AOPacket *packet)
+void kenji::AOClient::setSessionStatus(SessionStatus f_status)
 {
-#ifdef NET_DEBUG
-    qDebug() << "Received packet:" << packet->getPacketInfo().header << ":" << packet->getContent() << "args length:" << packet->getContent().length();
-#endif
-
-    qint64 current_tick = QDateTime::currentSecsSinceEpoch();
-    if (rate_limit_tick < current_tick) {
-        rate_limit_tick = current_tick;
-        packet_count = 0;
-    }
-
-    ++packet_count;
-    int hard_limit = ConfigManager::packetRateLimitHard();
-    int soft_limit = ConfigManager::packetRateLimitSoft();
-
-    if (hard_limit > 0 && packet_count >= hard_limit) {
-        sendPacket("BD", {"You have been disconnected for sending messages too quickly."});
-        m_socket->close();
-        return;
-    }
-    else if (soft_limit > 0 && packet_count >= soft_limit) {
-        sendServerMessage("You are sending messages too quickly. Please slow down.");
-    }
-
-    AreaData *l_area = server->getAreaById(areaId());
-
-    if (packet->getContent().join("").size() > 16384) {
-        return;
-    }
-
-    if (!checkPermission(packet->getPacketInfo().acl_permission)) {
-        return;
-    }
-
-    if (packet->getPacketInfo().header != "CH" && m_joined) {
-        if (m_is_afk) {
-            sendServerMessage("You are no longer AFK.");
-        }
-        m_is_afk = false;
-        if (characterName().endsWith(" [AFK]")) {
-            setCharacterName(characterName().remove(" [AFK]"));
-        }
-        m_afk_timer->start(ConfigManager::afkTimeout() * 1000);
-    }
-
-    if (packet->getContent().length() < packet->getPacketInfo().min_args) {
-#ifdef NET_DEBUG
-        qDebug() << "Invalid packet args length. Minimum is" << packet->getPacketInfo().min_args << "but only" << packet->getContent().length() << "were given.";
-#endif
-        return;
-    }
-
-    packet->handlePacket(l_area, *this);
+  if (f_status != m_session_status)
+  {
+    m_session_status = f_status;
+    Q_EMIT sessionStatusChanged(m_session_status);
+  }
 }
 
-void AOClient::changeArea(int new_area)
+void kenji::AOClient::markActive()
 {
-    if (areaId() == new_area) {
-        sendServerMessage("You are already in area " + server->getAreaName(areaId()));
-        return;
-    }
-    if (server->getAreaById(new_area)->lockStatus() == AreaData::LockStatus::LOCKED && !server->getAreaById(new_area)->invited().contains(clientId()) && !checkPermission(ACLRole::BYPASS_LOCKS)) {
-        sendServerMessage("Area " + server->getAreaName(new_area) + " is locked.");
-        return;
-    }
-
-    if (character() != "") {
-        server->getAreaById(areaId())->changeCharacter(server->getCharID(character()), -1);
-        server->updateCharsTaken(server->getAreaById(areaId()));
-    }
-    server->getAreaById(areaId())->removeClient(m_char_id, clientId());
-    bool l_character_taken = false;
-    if (server->getAreaById(new_area)->charactersTaken().contains(server->getCharID(character()))) {
-        setCharacter("");
-        m_char_id = -1;
-        l_character_taken = true;
-    }
-    server->getAreaById(new_area)->addClient(m_char_id, clientId());
-    setAreaId(new_area);
-    arup(ARUPType::PLAYER_COUNT, true);
-    sendEvidenceList(server->getAreaById(new_area));
-    sendPacket("HP", {"1", QString::number(server->getAreaById(new_area)->defHP())});
-    sendPacket("HP", {"2", QString::number(server->getAreaById(new_area)->proHP())});
-    sendPacket("BN", {server->getAreaById(new_area)->background(), server->getAreaById(new_area)->side()});
-    if (l_character_taken) {
-        sendPacket("DONE");
-    }
-    const QList<QTimer *> l_timers = server->getAreaById(areaId())->timers();
-    for (QTimer *l_timer : l_timers) {
-        int l_timer_id = server->getAreaById(areaId())->timers().indexOf(l_timer) + 1;
-        if (l_timer->isActive()) {
-            sendPacket("TI", {QString::number(l_timer_id), "2"});
-            sendPacket("TI", {QString::number(l_timer_id), "0", QString::number(QTime(0, 0).msecsTo(QTime(0, 0).addMSecs(l_timer->remainingTime())))});
-        }
-        else {
-            sendPacket("TI", {QString::number(l_timer_id), "3"});
-        }
-    }
-    sendServerMessage("You moved to area " + server->getAreaName(areaId()));
-    if (server->getAreaById(areaId())->sendAreaMessageOnJoin()) {
-        sendServerMessage(server->getAreaById(areaId())->areaMessage());
-    }
-
-    if (server->getAreaById(areaId())->lockStatus() == AreaData::LockStatus::SPECTATABLE) {
-        sendServerMessage("Area " + server->getAreaName(areaId()) + " is spectate-only; to chat IC you will need to be invited by the CM.");
-    }
+  if (m_session_status == SessionStatus::Expired)
+  {
+    return;
+  }
+  m_session_timer->stop();
+  setSessionStatus(SessionStatus::Active);
 }
 
-bool AOClient::changeCharacter(int char_id)
+void kenji::AOClient::markInactive()
 {
-    AreaData *l_area = server->getAreaById(areaId());
+  if (m_session_status != SessionStatus::Active)
+  {
+    return;
+  }
 
-    if (char_id >= server->getCharacterCount()) {
-        return false;
+  const int l_timeout = ConfigManager::sessionTimeout();
+  if (l_timeout <= 0)
+  {
+    markExpired();
+    return;
+  }
+  m_session_timer->start(l_timeout * 1000);
+  setSessionStatus(SessionStatus::Inactive);
+}
+
+void kenji::AOClient::markExpired()
+{
+  if (m_session_status == SessionStatus::Expired)
+  {
+    return;
+  }
+  m_session_timer->stop();
+  setSessionStatus(SessionStatus::Expired);
+
+  server->getAreaById(areaId())->removeClient(server->getCharID(character()), clientId());
+
+  bool l_updateLocks = false;
+
+  const QList<AreaData *> l_areas = server->getAreas();
+  for (AreaData *l_area : l_areas)
+  {
+    if (l_area->invited().contains(m_id))
+    {
+      l_area->uninvite(m_id);
     }
 
-    if (m_is_charcursed && !m_charcurse_list.contains(char_id)) {
-        return false;
-    }
+    l_updateLocks = l_updateLocks || l_area->removeOwner(clientId());
+  }
 
-    bool l_successfulChange = l_area->changeCharacter(server->getCharID(character()), char_id);
+  if (l_updateLocks)
+  {
+    arup(theory::AreaUpdatePacket::Locked, true);
+  }
+  arup(theory::AreaUpdatePacket::Ownership, true);
+}
 
-    if (char_id < 0) {
-        setCharacter("");
-        m_char_id = char_id;
-        setSpectator(true);
-    }
+bool kenji::AOClient::processPendingPacket(const theory::Packet &packet)
+{
+#ifdef NET_DEBUG
+  zDebug(log::protocol) << "Received packet:" << packet.header();
+#endif
 
-    if (l_successfulChange == true) {
-        QString l_char_selected = server->getCharacterById(char_id);
-        setCharacter(l_char_selected);
-        m_pos = "";
-        server->updateCharsTaken(l_area);
-        sendPacket("PV", {QString::number(clientId()), "CID", QString::number(char_id)});
-        return true;
-    }
+  qint64 current_tick = QDateTime::currentSecsSinceEpoch();
+  if (rate_limit_tick < current_tick)
+  {
+    rate_limit_tick = current_tick;
+    packet_count = 0;
+  }
+
+  ++packet_count;
+  int hard_limit = ConfigManager::packetRateLimitHard();
+  int soft_limit = ConfigManager::packetRateLimitSoft();
+
+  if (hard_limit > 0 && packet_count >= hard_limit)
+  {
+    drop(theory::ErrorPacket::ProtocolError, "You have been disconnected for sending messages too quickly.");
     return false;
+  }
+  else if (soft_limit > 0 && packet_count >= soft_limit)
+  {
+    sendServerMessage("You are sending messages too quickly. Please slow down.");
+  }
+
+  if (m_status == theory::PlayerStatus::Away)
+  {
+    sendServerMessage("You are no longer AFK.");
+    setStatus(theory::PlayerStatus::Online);
+  }
+  m_afk_timer->start(ConfigManager::afkTimeout() * 1000);
+
+  if (!m_router.route(packet))
+  {
+    drop(theory::ErrorPacket::ProtocolError, "Invalid packet.");
+    return false;
+  }
+  return m_session_status != SessionStatus::Expired;
 }
 
-void AOClient::changePosition(QString new_pos)
+void kenji::AOClient::drop()
 {
-    m_pos = new_pos;
-    sendServerMessage("Position changed to " + m_pos + ".");
-    sendPacket("SP", {m_pos});
+  markExpired();
+  m_socket->close();
 }
 
-void AOClient::handleCommand(QString command, int argc, QStringList argv)
+void kenji::AOClient::drop(theory::ErrorPacket::Code code, const QString &reason)
 {
-    command = command.toLower();
-    QString l_target_command = command;
-    QVector<ACLRole::Permission> l_permissions;
+  theory::ErrorPacket l_error;
+  l_error.code = code;
+  l_error.what = reason;
+  shipPacket(l_error);
+  drop();
+}
 
-    // check for aliases
-    const QList<CommandExtension> l_extensions = server->getCommandExtensionCollection()->getExtensions();
-    for (const CommandExtension &i_extension : l_extensions) {
-        if (i_extension.checkCommandNameAndAlias(command)) {
-            l_target_command = i_extension.getCommandName();
-            l_permissions = i_extension.getPermissions();
-            break;
-        }
+void kenji::AOClient::registerSessionRoutes()
+{
+  m_router.unregisterAllRoutes();
+  m_router.registerRoute<theory::GoodbyePacket>(&AOClient::process, this);
+  m_router.registerRoute<theory::ChangeCharacterPacket>(&AOClient::process, this);
+  m_router.registerRoute<theory::OocMessagePacket>(&AOClient::process, this);
+  m_router.registerRoute<theory::IcMessagePacket>(&AOClient::process, this);
+  m_router.registerRoute<theory::PlayMusicPacket>(&AOClient::process, this);
+  m_router.registerRoute<theory::ChangeAreaPacket>(&AOClient::process, this);
+  m_router.registerRoute<theory::PenaltyPacket>(&AOClient::process, this);
+  m_router.registerRoute<theory::SplashPacket>(&AOClient::process, this);
+  m_router.registerRoute<theory::AddEvidencePacket>(&AOClient::process, this);
+  m_router.registerRoute<theory::EditEvidencePacket>(&AOClient::process, this);
+  m_router.registerRoute<theory::DeleteEvidencePacket>(&AOClient::process, this);
+  m_router.registerRoute<theory::ModCallPacket>(&AOClient::process, this);
+  m_router.registerRoute<theory::ModActionPacket>(&AOClient::process, this);
+}
+
+void kenji::AOClient::changeArea(int new_area)
+{
+  if (areaId() == new_area)
+  {
+    sendServerMessage("You are already in area " + server->getAreaName(areaId()));
+    return;
+  }
+  if (server->getAreaById(new_area)->lockStatus() == theory::AreaLockStatus::Locked && !server->getAreaById(new_area)->invited().contains(clientId()) && !checkPermission(ACLRole::BYPASS_LOCKS))
+  {
+    sendServerMessage("Area " + server->getAreaName(new_area) + " is locked.");
+    return;
+  }
+
+  if (character() != "")
+  {
+    server->getAreaById(areaId())->changeCharacter(server->getCharID(character()), theory::NoCharacterId);
+  }
+  server->getAreaById(areaId())->removeClient(m_char_id, clientId());
+  bool l_character_taken = false;
+  if (server->getAreaById(new_area)->charactersTaken().contains(server->getCharID(character())))
+  {
+    setCharacter("");
+    m_char_id = theory::NoCharacterId;
+    l_character_taken = true;
+  }
+  server->getAreaById(new_area)->addClient(m_char_id, clientId());
+  setAreaId(new_area);
+  sendEvidenceList(server->getAreaById(new_area));
+
+  theory::PenaltyPacket l_def_penalty;
+  l_def_penalty.bar = theory::HealthBar::Defense;
+  l_def_penalty.value = server->getAreaById(new_area)->defHP();
+  shipPacket(l_def_penalty);
+
+  theory::PenaltyPacket l_pro_penalty;
+  l_pro_penalty.bar = theory::HealthBar::Prosecution;
+  l_pro_penalty.value = server->getAreaById(new_area)->proHP();
+  shipPacket(l_pro_penalty);
+
+  theory::BackgroundPacket l_background;
+  l_background.background = server->getAreaById(new_area)->background();
+  l_background.side = server->getAreaById(new_area)->side();
+  l_background.display = true;
+  shipPacket(l_background);
+
+  if (l_character_taken)
+  {
+    theory::CharacterAcceptedPacket l_accepted;
+    l_accepted.characterId = theory::NoCharacterId;
+    shipPacket(l_accepted);
+  }
+  server->getAreaById(areaId())->shipTimers(clientId());
+  sendServerMessage("You moved to area " + server->getAreaName(areaId()));
+  if (server->getAreaById(areaId())->sendAreaMessageOnJoin())
+  {
+    sendServerMessage(server->getAreaById(areaId())->areaMessage());
+  }
+
+  if (server->getAreaById(areaId())->lockStatus() == theory::AreaLockStatus::Spectatable)
+  {
+    sendServerMessage("Area " + server->getAreaName(areaId()) + " is spectate-only; to chat IC you will need to be invited by the CM.");
+  }
+}
+
+bool kenji::AOClient::changeCharacter(theory::CharacterId char_id)
+{
+  AreaData *l_area = server->getAreaById(areaId());
+
+  if (char_id >= server->getCharacterCount())
+  {
+    return false;
+  }
+
+  if (m_is_charcursed && !m_charcurse_list.contains(char_id))
+  {
+    return false;
+  }
+
+  bool l_successfulChange = l_area->changeCharacter(server->getCharID(character()), char_id);
+
+  if (char_id < 0)
+  {
+    setCharacter("");
+    m_char_id = theory::NoCharacterId;
+    theory::CharacterAcceptedPacket l_accepted;
+    l_accepted.characterId = theory::NoCharacterId;
+    shipPacket(l_accepted);
+  }
+
+  if (l_successfulChange == true)
+  {
+    QString l_char_selected = server->getCharacterById(char_id);
+    setCharacter(l_char_selected);
+    m_pos = "";
+    theory::CharacterAcceptedPacket l_accepted;
+    l_accepted.characterId = m_is_charcursed ? m_charcurse_list.indexOf(char_id) : char_id;
+    shipPacket(l_accepted);
+    return true;
+  }
+  return false;
+}
+
+void kenji::AOClient::changePosition(const QString &new_pos)
+{
+  m_pos = new_pos;
+  sendServerMessage("Position changed to " + m_pos + ".");
+  theory::SetPositionPacket l_position;
+  if (!m_pos.isEmpty())
+  {
+    l_position.position = m_pos;
+  }
+  shipPacket(l_position);
+}
+
+void kenji::AOClient::handleCommand(QString command, int argc, QStringList argv)
+{
+  command = command.toLower();
+  QString l_target_command = command;
+  QList<ACLRole::Permission> l_permissions;
+
+  // check for aliases
+  const QList<CommandExtension> l_extensions = server->getCommandExtensionCollection()->getExtensions();
+  for (const CommandExtension &i_extension : l_extensions)
+  {
+    if (i_extension.checkCommandNameAndAlias(command))
+    {
+      l_target_command = i_extension.getCommandName();
+      l_permissions = i_extension.getPermissions();
+      break;
+    }
+  }
+
+  CommandInfo l_command = COMMANDS.value(l_target_command, {{ACLRole::NONE}, -1, &AOClient::cmdDefault});
+  if (l_permissions.isEmpty())
+  {
+    l_permissions.append(l_command.acl_permissions);
+  }
+
+  bool l_has_permissions = false;
+  for (const ACLRole::Permission i_permission : qAsConst(l_permissions))
+  {
+    if (checkPermission(i_permission))
+    {
+      l_has_permissions = true;
+      break;
+    }
+  }
+  if (!l_has_permissions)
+  {
+    sendServerMessage("You do not have permission to use that command.");
+    return;
+  }
+
+  if (argc < l_command.minArgs)
+  {
+    sendServerMessage("Invalid command syntax.");
+    sendServerMessage("The expected syntax for this command is: \n" + ConfigManager::commandHelp(command).usage);
+    return;
+  }
+
+  (this->*(l_command.action))(argc, argv);
+}
+
+void kenji::AOClient::arup(theory::AreaUpdatePacket::Property property, bool broadcast)
+{
+  const QList<AreaData *> l_areas = server->getAreas();
+  for (int l_area_id = 0; l_area_id < l_areas.size(); ++l_area_id)
+  {
+    AreaData *l_area = l_areas.at(l_area_id);
+
+    theory::AreaUpdatePacket l_update;
+    l_update.areaId = l_area_id;
+    l_update.property = property;
+
+    switch (property)
+    {
+    default:
+      return;
+    case theory::AreaUpdatePacket::Status:
+      l_update.data = theory::encodeJson(l_area->status());
+      break;
+    case theory::AreaUpdatePacket::Ownership:
+      l_update.data = theory::encodeJson(l_area->owners());
+      break;
+    case theory::AreaUpdatePacket::Locked:
+      l_update.data = theory::encodeJson(l_area->lockStatus());
+      break;
     }
 
-    CommandInfo l_command = COMMANDS.value(l_target_command, {{ACLRole::NONE}, -1, &AOClient::cmdDefault});
-    if (l_permissions.isEmpty()) {
-        l_permissions.append(l_command.acl_permissions);
+    if (broadcast)
+    {
+      server->broadcast(l_update);
     }
-
-    bool l_has_permissions = false;
-    for (const ACLRole::Permission i_permission : qAsConst(l_permissions)) {
-        if (checkPermission(i_permission)) {
-            l_has_permissions = true;
-            break;
-        }
+    else
+    {
+      shipPacket(l_update);
     }
-    if (!l_has_permissions) {
-        sendServerMessage("You do not have permission to use that command.");
-        return;
-    }
-
-    if (argc < l_command.minArgs) {
-        sendServerMessage("Invalid command syntax.");
-        sendServerMessage("The expected syntax for this command is: \n" + ConfigManager::commandHelp(command).usage);
-        return;
-    }
-
-    (this->*(l_command.action))(argc, argv);
+  }
 }
 
-void AOClient::arup(ARUPType type, bool broadcast)
+void kenji::AOClient::fullArup()
 {
-    QStringList l_arup_data;
-    l_arup_data.append(QString::number(type));
-    const QVector<AreaData *> l_areas = server->getAreas();
-    for (AreaData *l_area : l_areas) {
-        switch (type) {
-        case ARUPType::PLAYER_COUNT:
-        {
-            l_arup_data.append(QString::number(l_area->playerCount()));
-            break;
-        }
-        case ARUPType::STATUS:
-        {
-            QString l_area_status = QVariant::fromValue(l_area->status()).toString().replace("_", "-"); // LOOKING_FOR_PLAYERS to LOOKING-FOR-PLAYERS
-            l_arup_data.append(l_area_status);
-            break;
-        }
-        case ARUPType::CM:
-        {
-            if (l_area->owners().isEmpty()) {
-                l_arup_data.append("FREE");
-            }
-            else {
-                QStringList l_area_owners;
-                const QList<int> l_owner_ids = l_area->owners();
-                for (int l_owner_id : l_owner_ids) {
-                    AOClient *l_owner = server->getClientByID(l_owner_id);
-                    l_area_owners.append("[" + QString::number(l_owner->clientId()) + "] " + l_owner->character());
-                }
-                l_arup_data.append(l_area_owners.join(", "));
-            }
-            break;
-        }
-        case ARUPType::LOCKED:
-        {
-            QString l_lock_status = QVariant::fromValue(l_area->lockStatus()).toString();
-            l_arup_data.append(l_lock_status);
-            break;
-        }
-        default:
-        {
-            return;
-        }
-        }
-    }
-    if (broadcast) {
-        server->broadcast(PacketFactory::createPacket("ARUP", l_arup_data));
-    }
-    else {
-        sendPacket("ARUP", l_arup_data);
-    }
+  arup(theory::AreaUpdatePacket::Status, false);
+  arup(theory::AreaUpdatePacket::Ownership, false);
+  arup(theory::AreaUpdatePacket::Locked, false);
 }
 
-void AOClient::fullArup()
+void kenji::AOClient::shipPacket(const theory::Packet &packet)
 {
-    arup(ARUPType::PLAYER_COUNT, false);
-    arup(ARUPType::STATUS, false);
-    arup(ARUPType::CM, false);
-    arup(ARUPType::LOCKED, false);
+  m_socket->shipPacket(packet);
 }
 
-void AOClient::sendPacket(AOPacket *packet)
+theory::Shared<theory::CargoSocket> kenji::AOClient::socket() const
 {
-    m_socket->write(packet);
+  return m_socket;
 }
 
-void AOClient::sendPacket(QString header, QStringList contents)
+void kenji::AOClient::setSocket(const theory::Shared<theory::CargoSocket> &socket)
 {
-    sendPacket(PacketFactory::createPacket(header, contents));
+  if (m_socket)
+  {
+    m_socket->disconnect(this);
+  }
+
+  m_socket = socket;
+  connect(m_socket.get(), &theory::CargoSocket::disconnectedFromPeer, this, &AOClient::markInactive);
 }
 
-void AOClient::sendPacket(QString header)
+void kenji::AOClient::process(const theory::GoodbyePacket &)
 {
-    sendPacket(PacketFactory::createPacket(header, {}));
+  drop();
 }
 
-void AOClient::calculateIpid()
+void kenji::AOClient::sendServerMessage(const QString &message)
 {
-    // TODO: add support for longer ipids?
-    // This reduces the (fairly high) chance of
-    // birthday paradox issues arising. However,
-    // typing more than 8 characters might be a
-    // bit cumbersome.
-
-    QCryptographicHash hash(QCryptographicHash::Md5); // Don't need security, just hashing for uniqueness
-
-    hash.addData(m_remote_ip.toString().toUtf8());
-
-    m_ipid = hash.result().toHex().right(8); // Use the last 8 characters (4 bytes)
+  theory::ServerMessagePacket l_packet;
+  l_packet.message = message;
+  shipPacket(l_packet);
 }
 
-void AOClient::sendServerMessage(QString message)
+void kenji::AOClient::sendServerMessageArea(const QString &message)
 {
-    sendPacket("CT", {ConfigManager::serverNickname(), message, "1"});
+  server->broadcastMessageToArea(message, areaId());
 }
 
-void AOClient::sendServerMessageArea(QString message)
+void kenji::AOClient::sendServerBroadcast(const QString &message)
 {
-    server->broadcast(PacketFactory::createPacket("CT", {ConfigManager::serverNickname(), message, "1"}), areaId());
+  server->broadcastMessage(message);
 }
 
-void AOClient::sendServerBroadcast(QString message)
+bool kenji::AOClient::checkPermission(ACLRole::Permission f_permission) const
 {
-    server->broadcast(PacketFactory::createPacket("CT", {ConfigManager::serverNickname(), message, "1"}));
+  if (f_permission == ACLRole::NONE)
+  {
+    return true;
+  }
+
+  if ((f_permission == ACLRole::CM) && server->getAreaById(areaId())->owners().contains(clientId()))
+  {
+    return true; // I'm sorry for this hack.
+  }
+
+  if (!isAuthenticated())
+  {
+    return false;
+  }
+
+  if (ConfigManager::authType() == DataTypes::AuthType::SIMPLE)
+  {
+    return true;
+  }
+
+  const ACLRole l_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
+  return l_role.checkPermission(f_permission);
 }
 
-bool AOClient::checkPermission(ACLRole::Permission f_permission) const
+QString kenji::AOClient::getIpid() const
 {
-    if (f_permission == ACLRole::NONE) {
-        return true;
-    }
-
-    if ((f_permission == ACLRole::CM) && server->getAreaById(areaId())->owners().contains(clientId())) {
-        return true; // I'm sorry for this hack.
-    }
-
-    if (!isAuthenticated()) {
-        return false;
-    }
-
-    if (ConfigManager::authType() == DataTypes::AuthType::SIMPLE) {
-        return true;
-    }
-
-    const ACLRole l_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
-    return l_role.checkPermission(f_permission);
+  return m_ipid;
 }
 
-QString AOClient::getIpid() const
+QString kenji::AOClient::getHwid() const
 {
-    return m_ipid;
+  return m_hwid;
 }
 
-QString AOClient::getHwid() const
+bool kenji::AOClient::isAuthenticated() const
 {
-    return m_hwid;
+  return m_authenticated;
 }
 
-bool AOClient::hasJoined() const
+int kenji::AOClient::clientId() const
 {
-    return m_joined;
+  return m_id;
 }
 
-bool AOClient::isAuthenticated() const
+QString kenji::AOClient::name() const
 {
-    return m_authenticated;
+  return m_ooc_name;
 }
 
-Server *AOClient::getServer()
+void kenji::AOClient::setName(const QString &f_name)
 {
-    return server;
+  if (f_name != m_ooc_name)
+  {
+    m_ooc_name = f_name;
+    Q_EMIT nameChanged(m_ooc_name);
+  }
 }
 
-int AOClient::clientId() const
+int kenji::AOClient::areaId() const
 {
-    return m_id;
+  return m_current_area;
 }
 
-QString AOClient::name() const
+void kenji::AOClient::setAreaId(const int f_area_id)
 {
-    return m_ooc_name;
+  if (f_area_id != m_current_area)
+  {
+    m_current_area = f_area_id;
+    Q_EMIT areaIdChanged(m_current_area);
+  }
 }
 
-void AOClient::setName(const QString &f_name)
+QString kenji::AOClient::character() const
 {
-    if (f_name != m_ooc_name) {
-        m_ooc_name = f_name;
-        Q_EMIT nameChanged(m_ooc_name);
-    }
+  return m_current_char;
 }
 
-int AOClient::areaId() const
+void kenji::AOClient::setCharacter(const QString &f_character)
 {
-    return m_current_area;
+  if (f_character != m_current_char)
+  {
+    m_current_char = f_character;
+    Q_EMIT characterChanged(m_current_char);
+  }
 }
 
-void AOClient::setAreaId(const int f_area_id)
+std::optional<QString> kenji::AOClient::characterName() const
 {
-    if (f_area_id != m_current_area) {
-        m_current_area = f_area_id;
-        Q_EMIT areaIdChanged(m_current_area);
-    }
+  return m_showname;
 }
 
-QString AOClient::character() const
+void kenji::AOClient::setCharacterName(const std::optional<QString> &f_showname)
 {
-    return m_current_char;
+  if (f_showname != m_showname)
+  {
+    m_showname = f_showname;
+    Q_EMIT characterNameChanged(m_showname);
+  }
 }
 
-void AOClient::setCharacter(const QString &f_character)
+theory::PlayerStatus kenji::AOClient::status() const
 {
-    if (f_character != m_current_char) {
-        m_current_char = f_character;
-        Q_EMIT characterChanged(m_current_char);
-    }
+  return m_status;
 }
 
-QString AOClient::characterName() const
+void kenji::AOClient::setStatus(theory::PlayerStatus f_status)
 {
-    return m_showname;
+  if (f_status != m_status)
+  {
+    m_status = f_status;
+    Q_EMIT statusChanged(m_status);
+  }
 }
 
-void AOClient::setCharacterName(const QString &f_showname)
+bool kenji::AOClient::isSpectator() const
 {
-    if (f_showname != m_showname) {
-        m_showname = f_showname;
-        Q_EMIT characterNameChanged(m_showname);
-    }
+  return m_char_id == theory::NoCharacterId;
 }
 
-void AOClient::setSpectator(bool f_spectator)
+void kenji::AOClient::onAfkTimeout()
 {
-    m_is_spectator = f_spectator;
+  if (m_status != theory::PlayerStatus::Away)
+  {
+    sendServerMessage("You are now AFK.");
+    setStatus(theory::PlayerStatus::Away);
+  }
 }
 
-bool AOClient::isSpectator() const
+kenji::AOClient::AOClient(Server *p_server, ULogger &logger, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &f_remote_ip, QObject *parent, int user_id, MusicManager *p_manager)
+    : QObject(parent)
+    , m_remote_ip(f_remote_ip)
+    , m_socket(socket)
+    , m_music_manager(p_manager)
+    , m_last_wtce_time(0)
+    , m_id(user_id)
+    , m_current_area(0)
+    , m_current_char("")
+    , server(p_server)
+    , m_logger(logger)
+    , rate_limit_tick(0)
+    , packet_count(0)
 {
-    return m_is_spectator;
+  m_afk_timer = new QTimer(this);
+  m_afk_timer->setSingleShot(true);
+  connect(m_afk_timer, &QTimer::timeout, this, &AOClient::onAfkTimeout);
+
+  m_session_timer = new QTimer(this);
+  m_session_timer->setSingleShot(true);
+  connect(m_session_timer, &QTimer::timeout, this, &AOClient::markExpired);
+
+  registerSessionRoutes();
 }
 
-void AOClient::onAfkTimeout()
-{
-    if (!m_is_afk) {
-        sendServerMessage("You are now AFK.");
-        setCharacterName(characterName() + " [AFK]");
-    }
-    m_is_afk = true;
-}
-
-AOClient::AOClient(Server *p_server, NetworkSocket *socket, QObject *parent, int user_id, MusicManager *p_manager) :
-    QObject(parent),
-    m_remote_ip(socket->peerAddress()),
-    m_password(""),
-    m_joined(false),
-    m_socket(socket),
-    m_music_manager(p_manager),
-    m_last_wtce_time(0),
-    m_id(user_id),
-    m_current_area(0),
-    m_current_char(""),
-    server(p_server),
-    rate_limit_tick(0),
-    packet_count(0)
-{
-    m_afk_timer = new QTimer;
-    m_afk_timer->setSingleShot(true);
-    connect(m_afk_timer, &QTimer::timeout, this, &AOClient::onAfkTimeout);
-}
-
-AOClient::~AOClient()
-{
-    clientDisconnected();
-    m_socket->deleteLater();
-}
+kenji::AOClient::~AOClient()
+{}

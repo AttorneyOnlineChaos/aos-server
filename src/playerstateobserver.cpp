@@ -1,75 +1,110 @@
 #include "playerstateobserver.h"
 
-PlayerStateObserver::PlayerStateObserver(QObject *parent) :
-    QObject{parent}
+#include "core/json_codec.h"
+
+kenji::PlayerStateObserver::PlayerStateObserver(QObject *parent)
+    : QObject{parent}
 {}
 
-PlayerStateObserver::~PlayerStateObserver() {}
+kenji::PlayerStateObserver::~PlayerStateObserver()
+{}
 
-void PlayerStateObserver::registerClient(AOClient *client)
+void kenji::PlayerStateObserver::registerClient(AOClient *client)
 {
-    Q_ASSERT(!m_client_list.contains(client));
+  Q_ASSERT(!m_client_list.contains(client));
 
-    PacketPR packet(client->clientId(), PacketPR::ADD);
-    sendToClientList(packet);
+  theory::PlayerRosterPacket l_roster;
+  l_roster.clientId = client->clientId();
+  l_roster.action = theory::PlayerRosterPacket::Add;
+  broadcast(l_roster);
 
-    m_client_list.append(client);
+  m_client_list.append(client);
 
-    connect(client, &AOClient::nameChanged, this, &PlayerStateObserver::notifyNameChanged);
-    connect(client, &AOClient::characterChanged, this, &PlayerStateObserver::notifyCharacterChanged);
-    connect(client, &AOClient::characterNameChanged, this, &PlayerStateObserver::notifyCharacterNameChanged);
-    connect(client, &AOClient::areaIdChanged, this, &PlayerStateObserver::notifyAreaIdChanged);
+  auto notify = [this, client](theory::PlayerUpdatePacket::Property property) {
+    broadcast(playerUpdate(*client, property));
+  };
 
-    QList<AOPacket *> packets;
-    for (AOClient *i_client : qAsConst(m_client_list)) {
-        packets.append(new PacketPR(i_client->clientId(), PacketPR::ADD));
-        packets.append(new PacketPU(i_client->clientId(), PacketPU::NAME, i_client->name()));
-        packets.append(new PacketPU(i_client->clientId(), PacketPU::CHARACTER, i_client->character()));
-        packets.append(new PacketPU(i_client->clientId(), PacketPU::CHARACTER_NAME, i_client->characterName()));
-        packets.append(new PacketPU(i_client->clientId(), PacketPU::AREA_ID, i_client->areaId()));
+  connect(client, &AOClient::nameChanged, this, [notify] { notify(theory::PlayerUpdatePacket::Name); });
+  connect(client, &AOClient::characterChanged, this, [notify] { notify(theory::PlayerUpdatePacket::Character); });
+  connect(client, &AOClient::characterNameChanged, this, [notify] { notify(theory::PlayerUpdatePacket::CharacterName); });
+  connect(client, &AOClient::areaIdChanged, this, [notify] { notify(theory::PlayerUpdatePacket::AreaId); });
+  connect(client, &AOClient::statusChanged, this, [notify] { notify(theory::PlayerUpdatePacket::Status); });
+  connect(client, &AOClient::sessionStatusChanged, this, [this, client](AOClient::SessionStatus status) {
+    if (status == AOClient::SessionStatus::Active)
+    {
+      shipRoster(client);
     }
+  });
 
-    for (AOPacket *packet : qAsConst(packets)) {
-        client->sendPacket(packet);
-        delete packet;
-    }
+  shipRoster(client);
 }
 
-void PlayerStateObserver::unregisterClient(AOClient *client)
+void kenji::PlayerStateObserver::unregisterClient(AOClient *client)
 {
-    Q_ASSERT(m_client_list.contains(client));
+  Q_ASSERT(m_client_list.contains(client));
 
-    disconnect(client, nullptr, this, nullptr);
+  client->disconnect(this);
 
-    m_client_list.removeAll(client);
+  m_client_list.removeAll(client);
 
-    PacketPR packet(client->clientId(), PacketPR::REMOVE);
-    sendToClientList(packet);
+  theory::PlayerRosterPacket l_roster;
+  l_roster.clientId = client->clientId();
+  l_roster.action = theory::PlayerRosterPacket::Remove;
+  broadcast(l_roster);
 }
 
-void PlayerStateObserver::sendToClientList(const AOPacket &packet)
+theory::PlayerUpdatePacket kenji::PlayerStateObserver::playerUpdate(const AOClient &client, theory::PlayerUpdatePacket::Property property)
 {
-    for (AOClient *client : qAsConst(m_client_list)) {
-        client->sendPacket(&const_cast<AOPacket &>(packet));
-    }
+  theory::PlayerUpdatePacket packet;
+  packet.clientId = client.clientId();
+  packet.property = property;
+
+  switch (property)
+  {
+  default:
+  case theory::PlayerUpdatePacket::NoProperty:
+    break;
+  case theory::PlayerUpdatePacket::Name:
+    packet.data = theory::encodeJson(client.name());
+    break;
+  case theory::PlayerUpdatePacket::Character:
+    packet.data = theory::encodeJson(client.character());
+    break;
+  case theory::PlayerUpdatePacket::CharacterName:
+    packet.data = theory::encodeJson(client.characterName());
+    break;
+  case theory::PlayerUpdatePacket::AreaId:
+    packet.data = theory::encodeJson(client.areaId());
+    break;
+  case theory::PlayerUpdatePacket::Status:
+    packet.data = theory::encodeJson(client.status());
+    break;
+  }
+
+  return packet;
 }
 
-void PlayerStateObserver::notifyNameChanged(const QString &name)
+void kenji::PlayerStateObserver::broadcast(const theory::Packet &packet)
 {
-    sendToClientList(PacketPU(qobject_cast<AOClient *>(sender())->clientId(), PacketPU::NAME, name));
+  for (AOClient *client : qAsConst(m_client_list))
+  {
+    client->shipPacket(packet);
+  }
 }
 
-void PlayerStateObserver::notifyCharacterChanged(const QString &character)
+void kenji::PlayerStateObserver::shipRoster(AOClient *target)
 {
-    sendToClientList(PacketPU(qobject_cast<AOClient *>(sender())->clientId(), PacketPU::CHARACTER, character));
-}
+  for (AOClient *i_client : qAsConst(m_client_list))
+  {
+    theory::PlayerRosterPacket l_entry;
+    l_entry.clientId = i_client->clientId();
+    l_entry.action = theory::PlayerRosterPacket::Add;
+    target->shipPacket(l_entry);
 
-void PlayerStateObserver::notifyCharacterNameChanged(const QString &characterName)
-{
-    sendToClientList(PacketPU(qobject_cast<AOClient *>(sender())->clientId(), PacketPU::CHARACTER_NAME, characterName));
-}
-
-void PlayerStateObserver::notifyAreaIdChanged(int areaId)
-{
-    sendToClientList(PacketPU(qobject_cast<AOClient *>(sender())->clientId(), PacketPU::AREA_ID, areaId));
+    target->shipPacket(playerUpdate(*i_client, theory::PlayerUpdatePacket::Name));
+    target->shipPacket(playerUpdate(*i_client, theory::PlayerUpdatePacket::Character));
+    target->shipPacket(playerUpdate(*i_client, theory::PlayerUpdatePacket::CharacterName));
+    target->shipPacket(playerUpdate(*i_client, theory::PlayerUpdatePacket::AreaId));
+    target->shipPacket(playerUpdate(*i_client, theory::PlayerUpdatePacket::Status));
+  }
 }

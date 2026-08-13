@@ -1,52 +1,93 @@
-#include "packet/packet_hi.h"
+#include "aoclient.h"
 
+#include "area_data.h"
 #include "config_manager.h"
-#include "db_manager.h"
 #include "server.h"
 
-#include <QDebug>
-
-PacketHI::PacketHI(QStringList &contents) :
-    AOPacket(contents)
+void kenji::AOClient::shipSnapshot()
 {
+  AreaData *l_area = server->getAreaById(areaId());
+
+  sendCharacterList();
+
+  theory::MusicListPacket l_music_list;
+  l_music_list.playlists = m_music_manager->playlists(areaId());
+  shipPacket(l_music_list);
+
+  theory::AreaListPacket l_area_list;
+  l_area_list.areas = server->getAreaNames();
+  shipPacket(l_area_list);
+
+  sendEvidenceList(l_area);
+
+  theory::PenaltyPacket l_def_penalty;
+  l_def_penalty.bar = theory::HealthBar::Defense;
+  l_def_penalty.value = l_area->defHP();
+  shipPacket(l_def_penalty);
+
+  theory::PenaltyPacket l_pro_penalty;
+  l_pro_penalty.bar = theory::HealthBar::Prosecution;
+  l_pro_penalty.value = l_area->proHP();
+  shipPacket(l_pro_penalty);
+
+  theory::BackgroundPacket l_background;
+  l_background.background = l_area->background();
+  l_background.side = l_area->side();
+  l_background.display = true;
+  shipPacket(l_background);
+
+  sendServerMessage("=== MOTD ===\r\n" + ConfigManager::motd() + "\r\n=============");
+
+  fullArup(); // Give client all the area data
+
+  server->shipGlobalTimer(clientId());
+  l_area->shipTimers(clientId());
 }
 
-PacketInfo PacketHI::getPacketInfo() const
+void kenji::AOClient::beginSession()
 {
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 1,
-        .header = "HI"};
-    return info;
+  shipSnapshot();
+
+  theory::WelcomePacket l_welcome;
+  l_welcome.clientId = clientId();
+  shipPacket(l_welcome);
+
+  server->getAreaById(areaId())->addClient(-1, clientId());
 }
 
-void PacketHI::handlePacket(AreaData *area, AOClient &client) const
+void kenji::AOClient::resumeSession()
 {
-    Q_UNUSED(area)
+  shipSnapshot();
 
-    QString incoming_hwid = m_content[0];
-    if (incoming_hwid.isEmpty() || !client.m_hwid.isEmpty()) {
-        // No double sending or empty HWIDs!
-        client.sendPacket("BD", {"A protocol error has been encountered. Packet : HI"});
-        client.m_socket->close();
-        return;
+  theory::WelcomePacket l_welcome;
+  l_welcome.clientId = clientId();
+  shipPacket(l_welcome);
+
+  sendCharacterSelection();
+}
+
+void kenji::AOClient::sendCharacterList()
+{
+  theory::CharacterListPacket l_character_list;
+
+  if (m_is_charcursed)
+  {
+    for (theory::CharacterId l_char_id : qAsConst(m_charcurse_list))
+    {
+      l_character_list.characters.append(server->getCharacterById(l_char_id));
     }
+  }
+  else
+  {
+    l_character_list.characters = server->getCharacters();
+  }
 
-    client.m_hwid = incoming_hwid;
-    emit client.getServer()->logConnectionAttempt(client.m_remote_ip.toString(), client.m_ipid, client.m_hwid);
-    auto ban = client.getServer()->getDatabaseManager()->isHDIDBanned(client.m_hwid);
-    if (ban.first) {
-        QString ban_duration;
-        if (!(ban.second.duration == -2)) {
-            ban_duration = QDateTime::fromSecsSinceEpoch(ban.second.time).addSecs(ban.second.duration).toString("MM/dd/yyyy, hh:mm");
-        }
-        else {
-            ban_duration = "Permanently.";
-        }
-        client.sendPacket("BD", {"Reason: " + ban.second.reason + "\nBan ID: " + QString::number(ban.second.id) + "\nUntil: " + ban_duration});
-        client.m_socket->close();
-        return;
-    }
+  shipPacket(l_character_list);
+}
 
-    client.sendPacket("ID", {QString::number(client.clientId()), "akashi", QCoreApplication::applicationVersion()});
+void kenji::AOClient::sendCharacterSelection()
+{
+  theory::CharacterAcceptedPacket l_accepted;
+  l_accepted.characterId = m_is_charcursed ? m_charcurse_list.indexOf(m_char_id) : m_char_id;
+  shipPacket(l_accepted);
 }

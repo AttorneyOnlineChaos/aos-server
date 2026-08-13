@@ -55,7 +55,7 @@ jobs:
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
-          name: akashi-linux
+          name: kenji-linux
           path: bin/
   
   build-windows:
@@ -82,10 +82,10 @@ jobs:
           cd $Env:GITHUB_WORKSPACE
           cmake . -D CMAKE_BUILD_TYPE=Release
           cmake --build . --config Release
-          windeployqt bin\akashi.exe --release --no-translations --no-compiler-runtime --no-opengl-sw
+          windeployqt bin\kenji-runtime.exe --release --no-translations --no-compiler-runtime --no-opengl-sw
           
       - name: Upload zip
         uses: actions/upload-artifact@v4
         with:
-          name: akashi-windows
+          name: kenji-windows
           path: bin\

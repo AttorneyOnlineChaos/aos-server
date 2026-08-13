@@ -72,7 +72,7 @@ Thumbs.db
 *.exe
 
 build/
-bin/akashi
+bin/kenji-runtime
 bin/config/
 bin_tests/unittest_*
 bin/logs/

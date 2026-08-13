@@ -1,51 +1,52 @@
-#include "packet/packet_hp.h"
-#include "akashiutils.h"
-#include "packet/packet_factory.h"
+#include "aoclient.h"
+
+#include "area_data.h"
 #include "server.h"
 
-#include <QDebug>
-
-PacketHP::PacketHP(QStringList &contents) :
-    AOPacket(contents)
+void kenji::AOClient::process(const theory::PenaltyPacket &packet)
 {
-}
+  AreaData *l_area = server->getAreaById(areaId());
 
-PacketInfo PacketHP::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 2,
-        .header = "HP"};
-    return info;
-}
+  if (isSpectator())
+  {
+    sendServerMessage("Spectators are blocked from using the judge controls.");
+    return;
+  }
 
-void PacketHP::handlePacket(AreaData *area, AOClient &client) const
-{
-    if (client.m_is_spectator) {
-        client.sendServerMessage("Spectators are blocked from using the judge controls.");
-        return;
-    }
+  if (l_area->lockStatus() == theory::AreaLockStatus::Spectatable && !l_area->invited().contains(clientId()) && !checkPermission(ACLRole::BYPASS_LOCKS))
+  {
+    sendServerMessage("Spectators are blocked from using the judge controls.");
+    return;
+  }
 
-    if (area->lockStatus() == AreaData::LockStatus::SPECTATABLE && !area->invited().contains(client.clientId()) && !client.checkPermission(ACLRole::BYPASS_LOCKS)) {
-        client.sendServerMessage("Spectators are blocked from using the judge controls.");
-        return;
-    }
+  if (m_is_wtce_blocked)
+  {
+    sendServerMessage("You are blocked from using the judge controls.");
+    return;
+  }
 
-    if (client.m_is_wtce_blocked) {
-        client.sendServerMessage("You are blocked from using the judge controls.");
-        return;
-    }
-    int l_newValue = m_content.at(1).toInt();
+  switch (packet.bar)
+  {
+  default:
+    drop(theory::ErrorPacket::ProtocolError, "Packet : penalty");
+    return;
+  case theory::HealthBar::Defense:
+    l_area->changeHP(AreaData::Side::DEFENCE, packet.value);
+    break;
+  case theory::HealthBar::Prosecution:
+    l_area->changeHP(AreaData::Side::PROSECUTOR, packet.value);
+    break;
+  }
 
-    if (m_content[0] == "1") {
-        area->changeHP(AreaData::Side::DEFENCE, l_newValue);
-    }
-    else if (m_content[0] == "2") {
-        area->changeHP(AreaData::Side::PROSECUTOR, l_newValue);
-    }
+  theory::PenaltyPacket l_def_penalty;
+  l_def_penalty.bar = theory::HealthBar::Defense;
+  l_def_penalty.value = l_area->defHP();
+  server->broadcastToArea(l_def_penalty, l_area->index());
 
-    client.getServer()->broadcast(PacketFactory::createPacket("HP", {"1", QString::number(area->defHP())}), area->index());
-    client.getServer()->broadcast(PacketFactory::createPacket("HP", {"2", QString::number(area->proHP())}), area->index());
+  theory::PenaltyPacket l_pro_penalty;
+  l_pro_penalty.bar = theory::HealthBar::Prosecution;
+  l_pro_penalty.value = l_area->proHP();
+  server->broadcastToArea(l_pro_penalty, l_area->index());
 
-    client.updateJudgeLog(area, &client, "updated the penalties");
+  updateJudgeLog(l_area, this, "updated the penalties");
 }

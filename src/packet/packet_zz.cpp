@@ -1,67 +1,63 @@
-#include "packet/packet_zz.h"
+#include "aoclient.h"
+
+#include "area_data.h"
 #include "config_manager.h"
-#include "packet/packet_factory.h"
 #include "server.h"
 
-#include <QQueue>
-
-PacketZZ::PacketZZ(QStringList &contents) :
-    AOPacket(contents)
+void kenji::AOClient::process(const theory::ModCallPacket &packet)
 {
-}
+  if (packet.reason.length() > ConfigManager::modcallReasonLimit())
+  {
+    sendServerMessage("Your modcall reason is too long! Please limit it to " + QString::number(ConfigManager::modcallReasonLimit()) + " characters.");
+    return;
+  }
 
-PacketInfo PacketZZ::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 2,
-        .header = "ZZ"};
-    return info;
-}
+  QString l_name = name();
+  if (l_name.isEmpty())
+  {
+    l_name = character();
+  }
 
-void PacketZZ::handlePacket(AreaData *area, AOClient &client) const
-{
-    QString l_name = client.name();
-    if (client.name().isEmpty())
-        l_name = client.character();
+  QString l_areaName = server->getAreaById(areaId())->name();
+  QString l_id = QString::number(clientId());
 
-    QString l_areaName = area->name();
+  theory::ModCallNoticePacket l_notice;
+  l_notice.area = l_areaName;
+  l_notice.callerClientId = clientId();
+  l_notice.callerName = l_name;
+  l_notice.reason = packet.reason;
 
-    QString l_id = QString::number(client.clientId());
-
-    QString l_modcallNotice = "!!!MODCALL!!!\nArea: " + l_areaName + "\nCaller: " + "[" + l_id + "]" + l_name + "\n";
-
-    int target_id = m_content.at(1).toInt();
-    if (target_id != -1) {
-        AOClient *target = client.getServer()->getClientByID(target_id);
-        if (target) {
-            l_modcallNotice.append("Regarding: " + target->name() + "\n");
-        }
+  if (packet.targetClientId != theory::NoClientId)
+  {
+    AOClient *target = server->getClientByID(packet.targetClientId);
+    if (target)
+    {
+      l_notice.targetName = target->name();
     }
-    l_modcallNotice.append("Reason: " + m_content[0]);
+  }
 
-    const QVector<AOClient *> l_clients = client.getServer()->getClients();
-    for (AOClient *l_client : l_clients) {
-        if (l_client->m_authenticated)
-            l_client->sendPacket(PacketFactory::createPacket("ZZ", {l_modcallNotice}));
+  const QList<AOClient *> l_clients = server->getClients();
+  for (AOClient *l_client : l_clients)
+  {
+    if (l_client->m_authenticated)
+    {
+      l_client->shipPacket(l_notice);
     }
-    emit client.logModcall(client.getServer()->getAreaById(client.areaId())->name(), client.m_ipid, client.name(), QString::number(client.clientId()), (client.character() + " " + client.characterName()));
+  }
+  m_logger.logModcall(l_areaName, m_ipid, name(), QString::number(clientId()), (character() + " " + characterName().value_or(QString())));
 
-    if (ConfigManager::discordModcallWebhookEnabled()) {
-        QString l_name = client.name();
-        if (client.name().isEmpty())
-            l_name = client.character();
-
-        QString l_areaName = area->name();
-
-        QString webhook_reason = m_content.value(0);
-        if (target_id != -1) {
-            AOClient *target = client.getServer()->getClientByID(target_id);
-            if (target) {
-                webhook_reason.append(" (Regarding: " + target->name() + ")");
-            }
-        }
-
-        emit client.getServer()->modcallWebhookRequest(l_name, l_areaName, l_id, webhook_reason, client.getServer()->getAreaBuffer(l_areaName));
+  if (ConfigManager::discordModcallWebhookEnabled())
+  {
+    QString webhook_reason = packet.reason;
+    if (packet.targetClientId != theory::NoClientId)
+    {
+      AOClient *target = server->getClientByID(packet.targetClientId);
+      if (target)
+      {
+        webhook_reason.append(" (Regarding: " + target->name() + ")");
+      }
     }
+
+    Q_EMIT server->modcallWebhookRequest(l_name, l_areaName, l_id, webhook_reason, server->getAreaBuffer(l_areaName));
+  }
 }

@@ -1,110 +1,123 @@
-#include "packet_ma.h"
+#include "aoclient.h"
 
 #include "config_manager.h"
 #include "db_manager.h"
 #include "server.h"
 
-PacketMA::PacketMA(QStringList &contents) :
-    AOPacket(contents)
+#include <QDateTime>
+
+void kenji::AOClient::process(const theory::ModActionPacket &packet)
 {
-}
+  if (!m_authenticated)
+  {
+    sendServerMessage("You are not logged in!");
+    return;
+  }
 
-PacketInfo PacketMA::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 3,
-        .header = "MA"};
-    return info;
-}
+  bool is_kick;
+  switch (packet.action)
+  {
+  default:
+    return;
+  case theory::ModActionPacket::Kick:
+    is_kick = true;
+    break;
+  case theory::ModActionPacket::Ban:
+    is_kick = false;
+    break;
+  }
 
-void PacketMA::handlePacket(AreaData *area, AOClient &client) const
-{
-    Q_UNUSED(area);
+  if (is_kick)
+  {
+    if (!checkPermission(ACLRole::KICK))
+    {
+      sendServerMessage("You do not have permission to kick users.");
+      return;
+    }
+  }
+  else
+  {
+    if (!checkPermission(ACLRole::BAN))
+    {
+      sendServerMessage("You do not have permission to ban users.");
+      return;
+    }
+  }
 
-    if (!client.m_authenticated) {
-        client.sendServerMessage("You are not logged in!");
-        return;
+  AOClient *target = server->getClientByID(packet.targetClientId);
+  if (target == nullptr)
+  {
+    sendServerMessage("User not found.");
+    return;
+  }
+
+  QString moderator_name;
+  if (ConfigManager::authType() == DataTypes::AuthType::ADVANCED)
+  {
+    moderator_name = m_moderator_name;
+  }
+  else
+  {
+    moderator_name = "Moderator";
+  }
+
+  QList<AOClient *> clients = server->getClientsByIpid(target->m_ipid);
+  if (is_kick)
+  {
+    theory::ErrorPacket l_kicked;
+    l_kicked.code = theory::ErrorPacket::Banned;
+    l_kicked.what = packet.reason;
+    for (AOClient *subclient : clients)
+    {
+      subclient->shipPacket(l_kicked);
+      subclient->drop();
     }
 
-    int client_id = m_content.at(0).toInt();
-    int duration = qMax(m_content.at(1).toInt(), -1);
-    QString reason = m_content.at(2);
+    m_logger.logKick(moderator_name, target->m_ipid);
 
-    bool is_kick = duration == 0;
-    if (is_kick) {
-        if (!client.checkPermission(ACLRole::KICK)) {
-            client.sendServerMessage("You do not have permission to kick users.");
-            return;
-        }
+    sendServerMessage("Kicked " + QString::number(clients.size()) + " client(s) with ipid " + target->m_ipid + " for reason: " + packet.reason);
+  }
+  else
+  {
+    BanInfo ban;
+
+    ban.ip = target->m_remote_ip;
+    ban.ipid = target->m_ipid;
+    ban.moderator = moderator_name;
+    ban.reason = packet.reason;
+    ban.time = QDateTime::currentDateTime().toSecsSinceEpoch();
+
+    if (packet.durationSeconds == -1)
+    {
+      ban.duration = PermanentBanDuration;
     }
-    else {
-        if (!client.checkPermission(ACLRole::BAN)) {
-            client.sendServerMessage("You do not have permission to ban users.");
-            return;
-        }
+    else
+    {
+      ban.duration = packet.durationSeconds;
+    }
+    const QString timestamp = ban.until();
+
+    theory::ErrorPacket l_banned;
+    l_banned.code = theory::ErrorPacket::Banned;
+    l_banned.what = packet.reason;
+    for (AOClient *subclient : clients)
+    {
+      ban.hdid = subclient->m_hwid;
+
+      server->getDatabaseManager()->addBan(ban);
+
+      subclient->shipPacket(l_banned);
+      subclient->drop();
     }
 
-    AOClient *target = client.getServer()->getClientByID(client_id);
-    if (target == nullptr) {
-        client.sendServerMessage("User not found.");
-        return;
+    m_logger.logBan(moderator_name, target->m_ipid, timestamp);
+
+    sendServerMessage("Banned " + QString::number(clients.size()) + " client(s) with ipid " + target->m_ipid + " for reason: " + packet.reason);
+
+    int ban_id = server->getDatabaseManager()->getBanID(ban.ip);
+    if (ConfigManager::discordBanWebhookEnabled())
+    {
+      Q_EMIT server->banWebhookRequest(ban.ipid, ban.moderator, timestamp, ban.reason, ban_id);
     }
-
-    QString moderator_name;
-    if (ConfigManager::authType() == DataTypes::AuthType::ADVANCED) {
-        moderator_name = client.m_moderator_name;
-    }
-    else {
-        moderator_name = "Moderator";
-    }
-
-    QList<AOClient *> clients = client.getServer()->getClientsByIpid(target->m_ipid);
-    if (is_kick) {
-        for (AOClient *subclient : clients) {
-            subclient->sendPacket("KK", {reason});
-            subclient->m_socket->close();
-        }
-
-        Q_EMIT client.logKick(moderator_name, target->m_ipid, reason);
-
-        client.sendServerMessage("Kicked " + QString::number(clients.size()) + " client(s) with ipid " + target->m_ipid + " for reason: " + reason);
-    }
-    else {
-        DBManager::BanInfo ban;
-
-        ban.ip = target->m_remote_ip;
-        ban.ipid = target->m_ipid;
-        ban.moderator = moderator_name;
-        ban.reason = reason;
-        ban.time = QDateTime::currentDateTime().toSecsSinceEpoch();
-
-        QString timestamp;
-        if (duration == -1) {
-            ban.duration = -2;
-            timestamp = "permanently";
-        }
-        else {
-            ban.duration = duration * 60;
-            timestamp = QDateTime::fromSecsSinceEpoch(ban.time).addSecs(ban.duration).toString("MM/dd/yyyy, hh:mm");
-        }
-
-        for (AOClient *subclient : clients) {
-            ban.hdid = subclient->m_hwid;
-
-            client.getServer()->getDatabaseManager()->addBan(ban);
-
-            subclient->sendPacket("KB", {reason});
-            subclient->m_socket->close();
-        }
-
-        Q_EMIT client.logBan(moderator_name, target->m_ipid, timestamp, reason);
-
-        client.sendServerMessage("Banned " + QString::number(clients.size()) + " client(s) with ipid " + target->m_ipid + " for reason: " + reason);
-
-        int ban_id = client.getServer()->getDatabaseManager()->getBanID(ban.ip);
-        if (ConfigManager::discordBanWebhookEnabled()) {
-            Q_EMIT client.getServer()->banWebhookRequest(ban.ipid, ban.moderator, timestamp, ban.reason, ban_id);
-        }
-    }
+  }
 }

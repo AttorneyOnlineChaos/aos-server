@@ -1,48 +1,43 @@
-#include "packet/packet_rt.h"
-#include "packet/packet_factory.h"
+#include "aoclient.h"
+
+#include "area_data.h"
 #include "server.h"
 
-#include <QDebug>
+#include <QDateTime>
 
-PacketRT::PacketRT(QStringList &contents) :
-    AOPacket(contents)
+void kenji::AOClient::process(const theory::SplashPacket &packet)
 {
-}
+  AreaData *l_area = server->getAreaById(areaId());
 
-PacketInfo PacketRT::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 1,
-        .header = "RT"};
-    return info;
-}
+  if (isSpectator())
+  {
+    sendServerMessage("Spectators are blocked from using the judge controls.");
+    return;
+  }
 
-void PacketRT::handlePacket(AreaData *area, AOClient &client) const
-{
-    if (client.m_is_spectator) {
-        client.sendServerMessage("Spectators are blocked from using the judge controls.");
-        return;
-    }
+  if (l_area->lockStatus() == theory::AreaLockStatus::Spectatable && !l_area->invited().contains(clientId()) && !checkPermission(ACLRole::BYPASS_LOCKS))
+  {
+    sendServerMessage("Spectators are blocked from using the judge controls.");
+    return;
+  }
 
-    if (area->lockStatus() == AreaData::LockStatus::SPECTATABLE && !area->invited().contains(client.clientId()) && !client.checkPermission(ACLRole::BYPASS_LOCKS)) {
-        client.sendServerMessage("Spectators are blocked from using the judge controls.");
-        return;
-    }
+  if (m_is_wtce_blocked)
+  {
+    sendServerMessage("You are blocked from using the judge controls.");
+    return;
+  }
 
-    if (client.m_is_wtce_blocked) {
-        client.sendServerMessage("You are blocked from using the judge controls.");
-        return;
-    }
+  if (!l_area->isWtceAllowed())
+  {
+    sendServerMessage("WTCE animations have been disabled in this area.");
+    return;
+  }
 
-    if (!area->isWtceAllowed()) {
-        client.sendServerMessage("WTCE animations have been disabled in this area.");
-        return;
-    }
-
-    if (QDateTime::currentDateTime().toSecsSinceEpoch() - client.m_last_wtce_time <= 5)
-        return;
-    client.m_last_wtce_time = QDateTime::currentDateTime().toSecsSinceEpoch();
-    client.getServer()->broadcast(PacketFactory::createPacket("RT", m_content), client.areaId());
-    client.updateJudgeLog(area, &client, "WT/CE");
+  if (QDateTime::currentDateTime().toSecsSinceEpoch() - m_last_wtce_time <= 5)
+  {
+    return;
+  }
+  m_last_wtce_time = QDateTime::currentDateTime().toSecsSinceEpoch();
+  server->broadcastToArea(packet, areaId());
+  updateJudgeLog(l_area, this, "WT/CE");
 }

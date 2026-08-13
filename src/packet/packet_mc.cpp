@@ -1,100 +1,87 @@
-#include "packet/packet_mc.h"
+#include "aoclient.h"
+
+#include "area_data.h"
 #include "music_manager.h"
-#include "packet/packet_factory.h"
 #include "server.h"
 
-#include <QDebug>
-
-PacketMC::PacketMC(QStringList &contents) :
-    AOPacket(contents)
+void kenji::AOClient::process(const theory::PlayMusicPacket &packet)
 {
-}
+  AreaData *l_area = server->getAreaById(areaId());
 
-PacketInfo PacketMC::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 2,
-        .header = "MC"};
-    return info;
-}
+  std::optional<QString> l_final_track;
+  if (packet.track && !packet.track->trimmed().isEmpty())
+  {
+    l_final_track = packet.track.value();
+  }
 
-void PacketMC::handlePacket(AreaData *area, AOClient &client) const
-{
-    // Due to historical reasons, this
-    // packet has two functions:
-    // Change area, and set music.
+  if (l_final_track && l_final_track->contains(".."))
+  {
+    sendServerMessage("Invalid music track.");
+    return;
+  }
 
-    // First, we check if the provided
-    // argument is a valid song
-    QString l_argument = m_content[0];
+  if (l_final_track && !m_music_manager->findTrack(l_final_track.value(), areaId()))
+  {
+    return;
+  }
 
-    if (client.getServer()->getMusicList().contains(l_argument) || client.m_music_manager->isCustom(client.areaId(), l_argument) || l_argument == "~stop.mp3") { // ~stop.mp3 is a dummy track used by 2.9+
-        // We have a song here
+  if (isSpectator())
+  {
+    sendServerMessage("Spectators are blocked from changing the music.");
+    return;
+  }
 
-        if (client.m_is_spectator) {
-            client.sendServerMessage("Spectators are blocked from changing the music.");
-            return;
-        }
+  if (l_area->lockStatus() == theory::AreaLockStatus::Spectatable && !l_area->invited().contains(clientId()) && !checkPermission(ACLRole::BYPASS_LOCKS))
+  {
+    sendServerMessage("Spectators are blocked from changing the music.");
+    return;
+  }
 
-        if (area->lockStatus() == AreaData::LockStatus::SPECTATABLE && !area->invited().contains(client.clientId()) && !client.checkPermission(ACLRole::BYPASS_LOCKS)) {
-            client.sendServerMessage("Spectators are blocked from changing the music.");
-            return;
-        }
+  if (m_is_dj_blocked)
+  {
+    sendServerMessage("You are blocked from changing the music.");
+    return;
+  }
+  if (!l_area->isMusicAllowed() && !checkPermission(ACLRole::CM))
+  {
+    sendServerMessage("Music is disabled in this area.");
+    return;
+  }
 
-        if (client.m_is_dj_blocked) {
-            client.sendServerMessage("You are blocked from changing the music.");
-            return;
-        }
-        if (!area->isMusicAllowed() && !client.checkPermission(ACLRole::CM)) {
-            client.sendServerMessage("Music is disabled in this area.");
-            return;
-        }
-        QString l_effects;
-        if (m_content.length() >= 4)
-            l_effects = m_content[3];
-        else
-            l_effects = "0";
-        QString l_final_song;
-
-        // As categories can be used to stop music we need to check if it has a dot for the extension. If not, we assume its a category.
-        if (!l_argument.contains("."))
-            l_final_song = "~stop.mp3";
-        else
-            l_final_song = l_argument;
-
-        // Jukebox intercepts the direct playing of messages.
-        if (area->isjukeboxEnabled()) {
-            QString l_jukebox_reply = area->addJukeboxSong(l_final_song);
-            client.sendServerMessage(l_jukebox_reply);
-            return;
-        }
-
-        if (l_final_song != "~stop.mp3") {
-            // We might have an aliased song. We check for its real songname and send it to the clients.
-            QPair<QString, float> l_song = client.m_music_manager->songInformation(l_final_song, client.areaId());
-            l_final_song = l_song.first;
-        }
-        AOPacket *l_music_change = PacketFactory::createPacket("MC", {l_final_song, m_content[1], client.characterName(), "1", "0", l_effects});
-        client.getServer()->broadcast(l_music_change, client.areaId());
-
-        emit client.logMusic((client.character() + " " + client.characterName()), client.name(), client.m_ipid, client.getServer()->getAreaById(client.areaId())->name(), l_final_song);
-
-        // Since we can't ensure a user has their showname set, we check if its empty to prevent
-        //"played by ." in /currentmusic.
-        if (client.characterName().isEmpty()) {
-            area->changeMusic(client.character(), l_final_song);
-            return;
-        }
-        area->changeMusic(client.characterName(), l_final_song);
-        return;
+  // Jukebox intercepts the direct playing of messages.
+  if (l_area->isjukeboxEnabled())
+  {
+    if (!l_final_track)
+    {
+      sendServerMessage("The jukebox is enabled in this area.");
+      return;
     }
 
-    for (int i = 0; i < client.getServer()->getAreaCount(); i++) {
-        QString l_area = client.getServer()->getAreaName(i);
-        if (l_area == l_argument) {
-            client.changeArea(i);
-            break;
-        }
-    }
+    QString l_jukebox_reply = l_area->addJukeboxSong(l_final_track.value());
+    sendServerMessage(l_jukebox_reply);
+    return;
+  }
+
+  theory::MusicChangedPacket l_music_change;
+  l_music_change.track = l_final_track;
+  l_music_change.characterId = m_char_id;
+  l_music_change.characterName = characterName();
+  l_music_change.channel = theory::MusicChannel::Music;
+  l_music_change.loop = !packet.noRepeat;
+  l_music_change.effects = packet.effects;
+  server->broadcastToArea(l_music_change, areaId());
+
+  m_logger.logMusic((character() + " " + characterName().value_or(QString())), name(), m_ipid, l_area->name(), l_final_track.value_or(QString()));
+
+  l_area->setCurrentMusic(l_final_track);
+}
+
+void kenji::AOClient::process(const theory::ChangeAreaPacket &packet)
+{
+  if (packet.areaId < 0 || packet.areaId >= server->getAreaCount())
+  {
+    return;
+  }
+
+  changeArea(packet.areaId);
 }

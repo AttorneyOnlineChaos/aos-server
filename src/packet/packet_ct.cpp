@@ -1,73 +1,72 @@
-#include "packet/packet_ct.h"
+#include "aoclient.h"
 
 #include "config_manager.h"
-#include "packet/packet_factory.h"
 #include "server.h"
 
-#include <QDebug>
 #include <QRegularExpression>
 
-PacketCT::PacketCT(QStringList &contents) :
-    AOPacket(contents)
+void kenji::AOClient::process(const theory::OocMessagePacket &packet)
 {
-}
+  if (m_is_ooc_muted)
+  {
+    sendServerMessage("You are OOC muted, and cannot speak.");
+    return;
+  }
 
-PacketInfo PacketCT::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 2,
-        .header = "CT"};
-    return info;
-}
+  QString l_name = dezalgo(packet.name).replace(QRegularExpression("\\[|\\]|\\{|\\}|\\#|\\$|\\%|\\&"), ""); // no fucky wucky shit here
+  if (l_name.trimmed().replace("​", "").isEmpty() || l_name == ConfigManager::serverNickname())           // impersonation & empty name protection
+  {
+    return;
+  }
 
-void PacketCT::handlePacket(AreaData *area, AOClient &client) const
-{
-    if (client.m_is_ooc_muted) {
-        client.sendServerMessage("You are OOC muted, and cannot speak.");
-        return;
+  if (l_name.length() > ConfigManager::maxNameLength())
+  {
+    sendServerMessage("Your name is too long! Please limit it to under " + QString::number(ConfigManager::maxNameLength()) + " characters.");
+    return;
+  }
+
+  setName(l_name);
+
+  if (m_is_logging_in)
+  {
+    loginAttempt(packet.message);
+    return;
+  }
+
+  QString l_message = dezalgo(packet.message);
+
+  if (l_message.length() == 0 || l_message.length() > ConfigManager::maxTextLength())
+  {
+    return;
+  }
+
+  if (!ConfigManager::filterList().isEmpty())
+  {
+    for (const QString &regex : ConfigManager::filterList())
+    {
+      QRegularExpression re(regex, QRegularExpression::CaseInsensitiveOption);
+      l_message.replace(re, "❌");
     }
+  }
 
-    client.setName(client.dezalgo(m_content[0]).replace(QRegularExpression("\\[|\\]|\\{|\\}|\\#|\\$|\\%|\\&"), "")); // no fucky wucky shit here
-    if (client.name().trimmed().replace("​", "").isEmpty() || client.name() == ConfigManager::serverNickname())    // impersonation & empty name protection
-        return;
+  if (l_message.at(0) == '/')
+  {
+    QStringList l_cmd_argv = l_message.split(" ", Qt::SkipEmptyParts);
+    QString l_command = l_cmd_argv[0].trimmed().toLower();
+    l_command = l_command.right(l_command.length() - 1);
+    l_cmd_argv.removeFirst();
+    int l_cmd_argc = l_cmd_argv.length();
 
-    if (client.name().length() > 30) {
-        client.sendServerMessage("Your name is too long! Please limit it to under 30 characters.");
-        return;
-    }
-
-    if (client.m_is_logging_in) {
-        client.loginAttempt(m_content[1]);
-        return;
-    }
-
-    QString l_message = client.dezalgo(m_content[1]);
-
-    if (l_message.length() == 0 || l_message.length() > ConfigManager::maxCharacters())
-        return;
-
-    if (!ConfigManager::filterList().isEmpty()) {
-        foreach (const QString &regex, ConfigManager::filterList()) {
-            QRegularExpression re(regex, QRegularExpression::CaseInsensitiveOption);
-            l_message.replace(re, "❌");
-        }
-    }
-
-    if (l_message.at(0) == '/') {
-        QStringList l_cmd_argv = l_message.split(" ", Qt::SkipEmptyParts);
-        QString l_command = l_cmd_argv[0].trimmed().toLower();
-        l_command = l_command.right(l_command.length() - 1);
-        l_cmd_argv.removeFirst();
-        int l_cmd_argc = l_cmd_argv.length();
-
-        client.handleCommand(l_command, l_cmd_argc, l_cmd_argv);
-        emit client.logCMD((client.character() + " " + client.characterName()), client.m_ipid, client.name(), l_command, l_cmd_argv, client.getServer()->getAreaById(client.areaId())->name());
-        return;
-    }
-    else {
-        AOPacket *final_packet = PacketFactory::createPacket("CT", {client.name(), l_message, "0"});
-        client.getServer()->broadcast(final_packet, client.areaId());
-    }
-    emit client.logOOC(client.getServer()->getAreaById(client.areaId())->name(), client.m_ipid, client.name(), QString::number(client.clientId()), (client.character() + " " + client.characterName()), l_message);
+    handleCommand(l_command, l_cmd_argc, l_cmd_argv);
+    m_logger.logCMD((character() + " " + characterName().value_or(QString())), m_ipid, name(), l_command, l_cmd_argv, server->getAreaById(areaId())->name());
+    return;
+  }
+  else
+  {
+    theory::OocMessagePacket l_broadcast;
+    l_broadcast.name = name();
+    l_broadcast.message = l_message;
+    server->broadcastToArea(l_broadcast, areaId());
+  }
+  m_logger.logOOC(server->getAreaById(areaId())->name(), m_ipid, name(), QString::number(clientId()), (character() + " " + characterName().value_or(QString())), l_message);
 }
