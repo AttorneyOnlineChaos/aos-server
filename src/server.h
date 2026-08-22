@@ -15,8 +15,8 @@
 #include <QWebSocket>
 
 #include "acl_roles_handler.h"
-#include "aoclient.h"
-#include "aoclient_registry.h"
+#include "ao_client.h"
+#include "ao_client_registry.h"
 #include "area_data.h"
 #include "broadcaster.h"
 #include "command_extension.h"
@@ -30,8 +30,8 @@
 #include "medieval_parser.h"
 #include "music_manager.h"
 #include "network/packet.h"
-#include "playerstateobserver.h"
-#include "serverpublisher.h"
+#include "player_state_observer.h"
+#include "server_publisher.h"
 #include "session_registry.h"
 #include "timer.h"
 

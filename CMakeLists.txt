@@ -50,10 +50,10 @@ qt_add_library(kenji STATIC
   src/kenji_info.h
   src/kenji_log.cpp
   src/kenji_log.h
-  src/aoclient.cpp
-  src/aoclient.h
-  src/aoclient_registry.cpp
-  src/aoclient_registry.h
+  src/ao_client.cpp
+  src/ao_client.h
+  src/ao_client_registry.cpp
+  src/ao_client_registry.h
   src/area_data.cpp
   src/area_data.h
   src/broadcaster.h
@@ -78,12 +78,12 @@ qt_add_library(kenji STATIC
   src/music_manager.cpp
   src/music_manager.h
   src/packets.cpp
-  src/playerstateobserver.cpp
-  src/playerstateobserver.h
+  src/player_state_observer.cpp
+  src/player_state_observer.h
   src/server.cpp
   src/server.h
-  src/serverpublisher.cpp
-  src/serverpublisher.h
+  src/server_publisher.cpp
+  src/server_publisher.h
   src/session_registry.cpp
   src/session_registry.h
   src/testimony_recorder.cpp

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "aoclient.h"
+#include "ao_client.h"
 
 #include "game/game_defs.h"
 #include "network/packet.h"

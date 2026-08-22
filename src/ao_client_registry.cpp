@@ -1,4 +1,4 @@
-#include "aoclient_registry.h"
+#include "ao_client_registry.h"
 
 kenji::AOClientRegistry::AOClientRegistry(Server &server, ULogger &logger, MusicManager &musicManager, int capacity, QObject *parent)
     : QObject{parent}

@@ -1,7 +1,7 @@
 #include "server.h"
 
 #include "acl_roles_handler.h"
-#include "aoclient.h"
+#include "ao_client.h"
 #include "area_data.h"
 #include "command_extension.h"
 #include "config_manager.h"
@@ -11,7 +11,7 @@
 #include "kenji_log.h"
 #include "logger/u_logger.h"
 #include "music_manager.h"
-#include "serverpublisher.h"
+#include "server_publisher.h"
 
 #include "core/json_codec.h"
 #include "core/logging.h"
