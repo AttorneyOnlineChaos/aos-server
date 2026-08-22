@@ -1,0 +1,16 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - nightly
+      - release
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch
+        env:
+          GH_TOKEN: ${{ secrets.BUILD_CHAOS }}
+        run: gh workflow run build.yml --repo AttorneyOnlineChaos/nightly --ref master -f mode=${{ github.ref_name }}
