@@ -6,6 +6,11 @@
 
 void kenji::AOClient::shipSnapshot()
 {
+  while (!_queuedPackets.isEmpty())
+  {
+    shipPacket(*_queuedPackets.dequeue());
+  }
+
   AreaData *l_area = server->getAreaById(areaId());
 
   sendCharacterList();

@@ -498,6 +498,12 @@ void kenji::AOClient::fullArup()
 
 void kenji::AOClient::shipPacket(const theory::Packet &packet)
 {
+  if (m_session_status == SessionStatus::Inactive)
+  {
+    _queuedPackets.enqueue(packet.clonePacket());
+    return;
+  }
+
   m_socket->shipPacket(packet);
 }
 

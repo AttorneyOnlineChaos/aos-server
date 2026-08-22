@@ -5,6 +5,7 @@
 
 #include <QDateTime>
 #include <QHostAddress>
+#include <QQueue>
 #include <QRegularExpression>
 #include <QTimer>
 #include <QtGlobal>
@@ -568,6 +569,7 @@ private:
   QTimer *m_session_timer;
 
   SessionStatus m_session_status = SessionStatus::Active;
+  QQueue<theory::PacketPointer> _queuedPackets;
 
   void registerSessionRoutes();
 
