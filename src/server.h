@@ -321,7 +321,7 @@ Q_SIGNALS:
    * @param p_name The server name.
    * @param p_desc The server description.
    */
-  void reloadRequest(QString p_name, QString p_desc);
+  void reloadRequest(const QString &p_name, const QString &p_desc);
 
   /**
    * @brief Triggers a partial update of the modern advertiser as some information, such as ports
