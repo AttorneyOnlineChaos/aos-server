@@ -6,7 +6,6 @@
 #include "core/json_codec.h"
 #include "core/logging.h"
 #include "kenji_log.h"
-#include "network/packet_error.h"
 #include "server.h"
 
 const QMap<QString, kenji::AOClient::CommandInfo> kenji::AOClient::COMMANDS{
