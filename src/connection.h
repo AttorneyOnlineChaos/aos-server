@@ -44,7 +44,7 @@ private:
   bool _finished = false;
   AOClient *_client = nullptr;
 
-  void drop(theory::ErrorPacket::Code code, const QString &reason);
+  void drop(theory::ErrorPacket::Code code, const QString &reason = QString());
 
   void finishHandshake(const SessionRegistry::Ticket &ticket);
 

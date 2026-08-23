@@ -103,7 +103,7 @@ void kenji::Connection::process(const theory::SessionClaimPacket &packet)
   const auto ticket = _sessions.join(packet.sessionToken, _hdid, _socket, _address);
   if (!ticket)
   {
-    drop(theory::ErrorPacket::ServerFull, "Maximum playercount has been reached.");
+    drop(theory::ErrorPacket::ServerFull);
     return;
   }
   finishHandshake(ticket.value());
@@ -120,7 +120,6 @@ void kenji::Connection::finishHandshake(const SessionRegistry::Ticket &ticket)
   {
     theory::ErrorPacket packet;
     packet.code = theory::ErrorPacket::SessionTransfered;
-    packet.what = "The session has been resumed elsewhere.";
     previous->shipPacket(packet);
     previous->close();
   }
