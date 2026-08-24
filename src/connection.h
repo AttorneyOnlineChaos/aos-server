@@ -1,14 +1,13 @@
 #pragma once
 
-#include "db_manager.h"
-#include "session_registry.h"
-
 #include "core/pointer_types.h"
+#include "db_manager.h"
 #include "network/cargo_socket.h"
 #include "network/packet_router.h"
 #include "protocol/packets/handshake_packets.h"
 #include "protocol/packets/moderation_packets.h"
 #include "protocol/packets/session_packets.h"
+#include "session_registry.h"
 
 #include <QHostAddress>
 #include <QObject>

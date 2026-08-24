@@ -1,4 +1,5 @@
 #include "db_manager.h"
+
 #include "core/logging.h"
 #include "kenji_log.h"
 

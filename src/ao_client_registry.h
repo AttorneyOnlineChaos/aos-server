@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ao_client.h"
-
 #include "core/pointer_types.h"
 #include "network/cargo_socket.h"
 

@@ -1,22 +1,20 @@
 #pragma once
 
+#include "data_types.h"
+#include "game/music.h"
+
 #include <QDebug>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
 #include <QHostAddress>
-#include <QMetaEnum>
-#include <QSettings>
-#include <QUrl>
-
-// JSON loading requirements
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-
-#include "data_types.h"
-#include "game/music.h"
+#include <QMetaEnum>
+#include <QSettings>
+#include <QUrl>
 
 namespace kenji
 {

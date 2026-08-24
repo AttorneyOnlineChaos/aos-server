@@ -1,7 +1,6 @@
 #include "session_registry.h"
 
 #include "config_manager.h"
-
 #include "protocol/session_tools.h"
 
 #include <QPointer>

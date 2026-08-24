@@ -3,6 +3,7 @@
 #include "config_manager.h"
 #include "logger/writer_full.h"
 #include "logger/writer_modcall.h"
+
 #include <QDateTime>
 #include <QMap>
 #include <QObject>

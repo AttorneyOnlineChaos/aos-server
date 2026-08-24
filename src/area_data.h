@@ -1,6 +1,12 @@
 #pragma once
 
+#include "broadcaster.h"
+#include "config_manager.h"
 #include "game/game_defs.h"
+#include "network/packet.h"
+#include "protocol/packets/area_packets.h"
+#include "protocol/packets/ic_packets.h"
+#include "timer.h"
 
 #include <QDebug>
 #include <QElapsedTimer>
@@ -11,13 +17,6 @@
 #include <QTimer>
 
 #include <optional>
-
-#include "broadcaster.h"
-#include "config_manager.h"
-#include "network/packet.h"
-#include "protocol/packets/area_packets.h"
-#include "protocol/packets/ic_packets.h"
-#include "timer.h"
 
 namespace kenji
 {

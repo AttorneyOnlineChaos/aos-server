@@ -1,15 +1,14 @@
 #include "config_manager.h"
-#include "kenji_log.h"
-#include "server.h"
-
 #include "core/logging.h"
+#include "kenji_log.h"
 #include "network/packet_factory.h"
 #include "protocol/protocol_utils.h"
-
-#include <cstdlib>
+#include "server.h"
 
 #include <QCoreApplication>
 #include <QDebug>
+
+#include <cstdlib>
 
 kenji::Server *server;
 

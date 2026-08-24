@@ -5,21 +5,20 @@
 #include "area_data.h"
 #include "command_extension.h"
 #include "config_manager.h"
+#include "core/json_codec.h"
+#include "core/logging.h"
 #include "db_manager.h"
 #include "discord.h"
 #include "kenji_info.h"
 #include "kenji_log.h"
 #include "logger/u_logger.h"
 #include "music_manager.h"
-#include "server_publisher.h"
-
-#include "core/json_codec.h"
-#include "core/logging.h"
 #include "network/cargo_socket.h"
 #include "protocol/packets/handshake_packets.h"
 #include "protocol/packets/moderation_packets.h"
 #include "protocol/protocol_info.h"
 #include "protocol/server_info.h"
+#include "server_publisher.h"
 
 #include <QCryptographicHash>
 #include <QHttpServerWebSocketUpgradeResponse>

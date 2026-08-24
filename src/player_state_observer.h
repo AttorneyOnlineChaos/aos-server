@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ao_client.h"
-
 #include "protocol/packets/roster_packets.h"
 
 #include <QList>

@@ -1,11 +1,10 @@
 #pragma once
 
 #include "connection.h"
-#include "db_manager.h"
-#include "session_registry.h"
-
 #include "core/pointer_types.h"
+#include "db_manager.h"
 #include "network/cargo_socket.h"
+#include "session_registry.h"
 
 #include <QHostAddress>
 #include <QList>

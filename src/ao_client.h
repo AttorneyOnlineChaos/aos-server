@@ -1,21 +1,10 @@
 #pragma once
 
-#include <algorithm>
-#include <optional>
-
-#include <QDateTime>
-#include <QHostAddress>
-#include <QQueue>
-#include <QRegularExpression>
-#include <QTimer>
-#include <QtGlobal>
-
 #include "acl_roles_handler.h"
-#include "db_manager.h"
-#include "logger/u_logger.h"
-
 #include "core/pointer_types.h"
+#include "db_manager.h"
 #include "game/game_defs.h"
+#include "logger/u_logger.h"
 #include "network/cargo_socket.h"
 #include "network/packet_router.h"
 #include "network/packet_transmitter.h"
@@ -28,6 +17,16 @@
 #include "protocol/packets/moderation_packets.h"
 #include "protocol/packets/music_packets.h"
 #include "protocol/packets/session_packets.h"
+
+#include <QDateTime>
+#include <QHostAddress>
+#include <QQueue>
+#include <QRegularExpression>
+#include <QTimer>
+#include <QtGlobal>
+
+#include <algorithm>
+#include <optional>
 
 namespace kenji
 {

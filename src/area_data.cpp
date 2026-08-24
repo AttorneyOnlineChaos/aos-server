@@ -1,13 +1,13 @@
-#include <algorithm>
-
 #include "area_data.h"
-#include "config_manager.h"
-#include "music_manager.h"
 
+#include "config_manager.h"
 #include "core/json_codec.h"
+#include "music_manager.h"
 #include "protocol/packets/music_packets.h"
 
 #include <QRegularExpression>
+
+#include <algorithm>
 
 kenji::AreaData::AreaData(const QString &p_name, int p_index, MusicManager *p_music_manager, Broadcaster &p_broadcaster)
     : m_index(p_index)

@@ -3,8 +3,8 @@
 #include "area_data.h"
 #include "config_manager.h"
 #include "core/json_binder.h"
-
 #include "server.h"
+
 #include <QJsonDocument>
 #include <QJsonObject>
 

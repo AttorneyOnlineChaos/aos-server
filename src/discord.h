@@ -1,9 +1,9 @@
 #pragma once
 
+#include "config_manager.h"
+
 #include <QCoreApplication>
 #include <QtNetwork>
-
-#include "config_manager.h"
 
 namespace kenji
 {

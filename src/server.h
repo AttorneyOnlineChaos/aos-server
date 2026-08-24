@@ -1,19 +1,5 @@
 #pragma once
 
-#include <QCoreApplication>
-#include <QDebug>
-#include <QFile>
-#include <QHash>
-#include <QHttpServer>
-#include <QHttpServerRequest>
-#include <QHttpServerResponse>
-#include <QMap>
-#include <QSettings>
-#include <QStack>
-#include <QString>
-#include <QTimer>
-#include <QWebSocket>
-
 #include "acl_roles_handler.h"
 #include "ao_client.h"
 #include "ao_client_registry.h"
@@ -30,12 +16,25 @@
 #include "medieval_parser.h"
 #include "music_manager.h"
 #include "network/packet.h"
+#include "network/packet_factory.h"
 #include "player_state_observer.h"
 #include "server_publisher.h"
 #include "session_registry.h"
 #include "timer.h"
 
-#include "network/packet_factory.h"
+#include <QCoreApplication>
+#include <QDebug>
+#include <QFile>
+#include <QHash>
+#include <QHttpServer>
+#include <QHttpServerRequest>
+#include <QHttpServerResponse>
+#include <QMap>
+#include <QSettings>
+#include <QStack>
+#include <QString>
+#include <QTimer>
+#include <QWebSocket>
 
 #include <functional>
 

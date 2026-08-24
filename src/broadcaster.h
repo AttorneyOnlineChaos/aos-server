@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ao_client.h"
-
 #include "game/game_defs.h"
 #include "network/packet.h"
 #include "protocol/packets/chat_packets.h"

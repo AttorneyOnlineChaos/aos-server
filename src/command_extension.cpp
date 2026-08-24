@@ -1,4 +1,5 @@
 #include "command_extension.h"
+
 #include "core/logging.h"
 #include "kenji_log.h"
 

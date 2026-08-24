@@ -1,6 +1,8 @@
 #include "config_manager.h"
+
 #include "core/logging.h"
 #include "kenji_log.h"
+
 #include <QSqlDatabase>
 #include <QSqlQuery>
 
@@ -158,7 +160,11 @@ QStringList kenji::ConfigManager::charlist()
 {
   QStringList l_charlist;
   QFile l_file("config/characters.txt");
-  l_file.open(QIODevice::ReadOnly | QIODevice::Text);
+  if (!l_file.open(QIODevice::ReadOnly | QIODevice::Text))
+  {
+    zWarning(log::config) << "Failed to load character list:" << l_file.errorString();
+    return l_charlist;
+  }
   while (!l_file.atEnd())
   {
     l_charlist.append(QString::fromUtf8(l_file.readLine().trimmed()));
@@ -172,7 +178,11 @@ QStringList kenji::ConfigManager::backgrounds()
 {
   QStringList l_backgrounds;
   QFile l_file("config/backgrounds.txt");
-  l_file.open(QIODevice::ReadOnly | QIODevice::Text);
+  if (!l_file.open(QIODevice::ReadOnly | QIODevice::Text))
+  {
+    zWarning(log::config) << "Failed to load background list:" << l_file.errorString();
+    return l_backgrounds;
+  }
   while (!l_file.atEnd())
   {
     l_backgrounds.append(l_file.readLine().trimmed());
@@ -185,7 +195,11 @@ QStringList kenji::ConfigManager::backgrounds()
 QList<theory::MusicPlaylist> kenji::ConfigManager::musiclist()
 {
   QFile l_music_json("config/music.json");
-  l_music_json.open(QIODevice::ReadOnly | QIODevice::Text);
+  if (!l_music_json.open(QIODevice::ReadOnly | QIODevice::Text))
+  {
+    zWarning(log::config) << "Failed to load musiclist:" << l_music_json.errorString();
+    return {};
+  }
 
   QJsonParseError l_error;
   QJsonDocument l_music_list_json = QJsonDocument::fromJson(l_music_json.readAll(), &l_error);
@@ -252,7 +266,11 @@ QList<theory::MusicPlaylist> kenji::ConfigManager::musiclist()
 void kenji::ConfigManager::loadCommandHelp()
 {
   QFile l_help_json("config/text/commandhelp.json");
-  l_help_json.open(QIODevice::ReadOnly | QIODevice::Text);
+  if (!l_help_json.open(QIODevice::ReadOnly | QIODevice::Text))
+  {
+    zWarning(log::config) << "Failed to load help information:" << l_help_json.errorString();
+    return;
+  }
 
   QJsonParseError l_error;
   QJsonDocument l_help_list_json = QJsonDocument::fromJson(l_help_json.readAll(), &l_error);
@@ -314,7 +332,11 @@ QStringList kenji::ConfigManager::sanitizedAreaNames()
 QStringList kenji::ConfigManager::iprangeBans()
 {
   QFile l_json_file("config/ipbans.json");
-  l_json_file.open(QIODevice::ReadOnly | QIODevice::Text);
+  if (!l_json_file.open(QIODevice::ReadOnly | QIODevice::Text))
+  {
+    zWarning(log::config) << "Failed to load IP range bans:" << l_json_file.errorString();
+    return {};
+  }
 
   QJsonParseError l_error;
   QJsonDocument l_ip_bans = QJsonDocument::fromJson(l_json_file.readAll(), &l_error);
@@ -359,7 +381,11 @@ QStringList kenji::ConfigManager::loadConfigFile(const QString &filename)
 {
   QStringList stringlist;
   QFile l_file("config/text/" + filename + ".txt");
-  l_file.open(QIODevice::ReadOnly | QIODevice::Text);
+  if (!l_file.open(QIODevice::ReadOnly | QIODevice::Text))
+  {
+    zWarning(log::config) << "Failed to load config file" << filename << ":" << l_file.errorString();
+    return stringlist;
+  }
   while (!(l_file.atEnd()))
   {
     stringlist.append(l_file.readLine().trimmed());

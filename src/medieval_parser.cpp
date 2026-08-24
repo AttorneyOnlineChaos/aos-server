@@ -1,4 +1,5 @@
 #include "medieval_parser.h"
+
 #include "core/logging.h"
 #include "kenji_log.h"
 
@@ -50,7 +51,12 @@ void kenji::MedievalParser::parseDataFile()
   datafile_valid = true;
 
   QFile l_datafile_json("config/text/autorp.json");
-  l_datafile_json.open(QIODevice::ReadOnly | QIODevice::Text);
+  if (!l_datafile_json.open(QIODevice::ReadOnly | QIODevice::Text))
+  {
+    zWarning(log::config) << "Failed to load Medieval Mode data file:" << l_datafile_json.errorString();
+    datafile_valid = false;
+    return;
+  }
 
   QJsonParseError l_error;
   const QJsonDocument &l_datafile_list_json = QJsonDocument::fromJson(l_datafile_json.readAll(), &l_error);

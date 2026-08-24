@@ -1,12 +1,13 @@
 #include "server_publisher.h"
+
 #include "config_manager.h"
 #include "core/logging.h"
 #include "kenji_log.h"
-#include "qnamespace.h"
 
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QTimer>
+#include <qnamespace.h>
 
 const int HTTP_OK = 200;
 const int WS_REVERSE_PROXY = 80;

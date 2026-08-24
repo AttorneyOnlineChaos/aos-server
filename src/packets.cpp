@@ -1,12 +1,12 @@
 #include "ao_client.h"
 
-#include <QQueue>
-
 #include "area_data.h"
 #include "config_manager.h"
 #include "db_manager.h"
 #include "music_manager.h"
 #include "server.h"
+
+#include <QQueue>
 
 void kenji::AOClient::sendEvidenceList(AreaData *area) const
 {

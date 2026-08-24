@@ -2,6 +2,9 @@
 
 #define DB_VERSION 3
 
+#include "acl_roles_handler.h"
+#include "crypto_helper.h"
+
 #include <QDateTime>
 #include <QFileInfo>
 #include <QHostAddress>
@@ -9,9 +12,6 @@
 #include <QSqlDriver>
 #include <QSqlError>
 #include <QSqlQuery>
-
-#include "acl_roles_handler.h"
-#include "crypto_helper.h"
 
 namespace kenji
 {

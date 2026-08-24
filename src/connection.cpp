@@ -2,7 +2,6 @@
 
 #include "config_manager.h"
 #include "db_manager.h"
-
 #include "protocol/protocol_info.h"
 
 kenji::Connection::Connection(SessionRegistry &sessions, DBManager &database, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &address, const QString &ipid, QObject *parent)
