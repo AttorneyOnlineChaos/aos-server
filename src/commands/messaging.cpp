@@ -630,7 +630,7 @@ void kenji::AOClient::cmdA(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool ok;
-  int l_area_id = argv[0].toInt(&ok);
+  theory::AreaId l_area_id = argv[0].toInt(&ok);
   if (!ok)
   {
     sendServerMessage("This does not look like a valid AreaID.");
@@ -662,11 +662,11 @@ void kenji::AOClient::cmdS(int argc, QStringList argv)
 {
   Q_UNUSED(argc);
 
-  int l_all_areas = server->getAreaCount() - 1;
+  theory::AreaId l_all_areas = server->getAreaCount() - 1;
   QString l_sender_name = name();
   QString l_ooc_message = argv.join(" ");
 
-  for (int i = 0; i <= l_all_areas; i++)
+  for (theory::AreaId i = 0; i <= l_all_areas; i++)
   {
     if (server->getAreaById(i)->owners().contains(clientId()))
     {

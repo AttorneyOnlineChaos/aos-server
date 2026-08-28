@@ -38,7 +38,7 @@ public:
    * and `YYYYYY` is the actual name of the area.
    * @param p_index The index of the area in the area list.
    */
-  AreaData(const QString &p_name, int p_index, MusicManager *p_music_manager, Broadcaster &p_broadcaster);
+  AreaData(const QString &p_name, theory::AreaId p_index, MusicManager *p_music_manager, Broadcaster &p_broadcaster);
 
   /**
    * @brief The data for evidence in the area.
@@ -329,7 +329,7 @@ public:
    *
    * @todo The area probably shouldn't know its own index.
    */
-  int index() const;
+  theory::AreaId index() const;
 
   /**
    * @brief Returns the display name of the area.
@@ -913,7 +913,7 @@ Q_SIGNALS:
    *
    * @param f_user_id The user ID of the client.
    */
-  void userJoinedArea(int f_area_index, int f_user_id);
+  void userJoinedArea(theory::AreaId f_area_index, int f_user_id);
 
 private:
   /**
@@ -929,7 +929,7 @@ private:
   /**
    * @brief The index of the area in the server's area list.
    */
-  int m_index;
+  theory::AreaId m_index;
 
   /**
    * @brief The display name of the area.

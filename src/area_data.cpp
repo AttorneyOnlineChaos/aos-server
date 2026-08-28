@@ -9,7 +9,7 @@
 
 #include <algorithm>
 
-kenji::AreaData::AreaData(const QString &p_name, int p_index, MusicManager *p_music_manager, Broadcaster &p_broadcaster)
+kenji::AreaData::AreaData(const QString &p_name, theory::AreaId p_index, MusicManager *p_music_manager, Broadcaster &p_broadcaster)
     : m_index(p_index)
     , m_music_manager(p_music_manager)
     , m_broadcaster{p_broadcaster}
@@ -258,7 +258,7 @@ QString kenji::AreaData::name() const
   return m_name;
 }
 
-int kenji::AreaData::index() const
+theory::AreaId kenji::AreaData::index() const
 {
   return m_index;
 }

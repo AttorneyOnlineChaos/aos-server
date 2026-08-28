@@ -19,7 +19,7 @@ kenji::MusicManager::MusicManager(Broadcaster &f_broadcaster, const QStringList 
 kenji::MusicManager::~MusicManager()
 {}
 
-QList<theory::MusicPlaylist> kenji::MusicManager::playlists(int f_area_id)
+QList<theory::MusicPlaylist> kenji::MusicManager::playlists(theory::AreaId f_area_id)
 {
   QList<theory::MusicPlaylist> l_playlists;
 
@@ -33,14 +33,14 @@ QList<theory::MusicPlaylist> kenji::MusicManager::playlists(int f_area_id)
   return l_playlists;
 }
 
-void kenji::MusicManager::broadcastMusicList(int f_area_id)
+void kenji::MusicManager::broadcastMusicList(theory::AreaId f_area_id)
 {
   theory::MusicListPacket l_music_list;
   l_music_list.playlists = playlists(f_area_id);
   m_broadcaster.broadcastToArea(l_music_list, f_area_id);
 }
 
-std::optional<theory::MusicTrack> kenji::MusicManager::findTrack(const QString &f_file_name, int f_area_id)
+std::optional<theory::MusicTrack> kenji::MusicManager::findTrack(const QString &f_file_name, theory::AreaId f_area_id)
 {
   const QList<theory::MusicPlaylist> l_playlists = playlists(f_area_id);
   for (const theory::MusicPlaylist &l_playlist : l_playlists)
@@ -57,7 +57,7 @@ std::optional<theory::MusicTrack> kenji::MusicManager::findTrack(const QString &
   return std::nullopt;
 }
 
-bool kenji::MusicManager::registerArea(int f_area_id)
+bool kenji::MusicManager::registerArea(theory::AreaId f_area_id)
 {
   if (m_custom_lists.contains(f_area_id))
   {
@@ -121,7 +121,7 @@ bool kenji::MusicManager::validateSong(const QString &f_song_name, const QString
   return false;
 }
 
-bool kenji::MusicManager::addCustomSong(const QString &f_song_name, const QString &f_real_name, theory::TrackLength f_duration, int f_area_id)
+bool kenji::MusicManager::addCustomSong(const QString &f_song_name, const QString &f_real_name, theory::TrackLength f_duration, theory::AreaId f_area_id)
 {
   // Validate if simple name.
   QString l_real_name = f_real_name;
@@ -164,7 +164,7 @@ bool kenji::MusicManager::addCustomSong(const QString &f_song_name, const QStrin
   return true;
 }
 
-bool kenji::MusicManager::addCustomCategory(const QString &f_category_name, int f_area_id)
+bool kenji::MusicManager::addCustomCategory(const QString &f_category_name, theory::AreaId f_area_id)
 {
   if (f_category_name.split(".").size() > 1)
   {
@@ -191,7 +191,7 @@ bool kenji::MusicManager::addCustomCategory(const QString &f_category_name, int 
   return true;
 }
 
-bool kenji::MusicManager::removeCustomMusic(const QString &f_songcategory_name, int f_area_id)
+bool kenji::MusicManager::removeCustomMusic(const QString &f_songcategory_name, theory::AreaId f_area_id)
 {
   QList<theory::MusicPlaylist> l_custom_list = m_custom_lists.value(f_area_id);
 
@@ -221,7 +221,7 @@ bool kenji::MusicManager::removeCustomMusic(const QString &f_songcategory_name, 
   return false;
 }
 
-bool kenji::MusicManager::toggleCustomMusicEnabled(int f_area_id)
+bool kenji::MusicManager::toggleCustomMusicEnabled(theory::AreaId f_area_id)
 {
   m_global_enabled.insert(f_area_id, !m_global_enabled.value(f_area_id));
   if (m_global_enabled.value(f_area_id))
@@ -232,7 +232,7 @@ bool kenji::MusicManager::toggleCustomMusicEnabled(int f_area_id)
   return m_global_enabled.value(f_area_id);
 }
 
-void kenji::MusicManager::sanitiseCustomMusicList(int f_area_id)
+void kenji::MusicManager::sanitiseCustomMusicList(theory::AreaId f_area_id)
 {
   QList<theory::MusicPlaylist> l_sanitised_list;
 
@@ -259,7 +259,7 @@ void kenji::MusicManager::sanitiseCustomMusicList(int f_area_id)
   m_custom_lists.insert(f_area_id, l_sanitised_list);
 }
 
-void kenji::MusicManager::clearCustomMusicList(int f_area_id)
+void kenji::MusicManager::clearCustomMusicList(theory::AreaId f_area_id)
 {
   m_custom_lists.insert(f_area_id, {});
 
@@ -288,7 +288,7 @@ void kenji::MusicManager::reloadRequest()
   m_cdns = ConfigManager::cdnList();
 }
 
-void kenji::MusicManager::userJoinedArea(int f_area_index, int f_user_id)
+void kenji::MusicManager::userJoinedArea(theory::AreaId f_area_index, int f_user_id)
 {
   theory::MusicListPacket l_music_list;
   l_music_list.playlists = playlists(f_area_index);

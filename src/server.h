@@ -194,7 +194,7 @@ public:
    *
    * @return A pointer to the area or null.
    */
-  AreaData *getAreaById(int f_area_id);
+  AreaData *getAreaById(theory::AreaId f_area_id);
 
   /**
    * @brief Getter for an area specific buffer from the logger.
@@ -215,7 +215,7 @@ public:
    *
    * @return The name of the area or empty.
    */
-  QString getAreaName(int f_area_id);
+  QString getAreaName(theory::AreaId f_area_id);
 
   /**
    * @brief Returns the available backgrounds on the server.

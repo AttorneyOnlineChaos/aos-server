@@ -153,8 +153,8 @@ public:
   theory::PlayerStatus status() const;
   void setStatus(theory::PlayerStatus f_status);
 
-  int areaId() const;
-  void setAreaId(const int f_area_id);
+  theory::AreaId areaId() const;
+  void setAreaId(const theory::AreaId f_area_id);
 
   /**
    * @brief The IP address of the client.
@@ -396,7 +396,7 @@ public:
    *
    * @param new_area The ID of the new area.
    */
-  void changeArea(int new_area);
+  void changeArea(theory::AreaId new_area);
 
   /**
    * @brief Handles an incoming command, checking for authorisation and minimum argument count.
@@ -544,7 +544,7 @@ Q_SIGNALS:
   void characterChanged(const theory::CharacterId &);
   void characterNameChanged(const std::optional<QString> &);
   void statusChanged(theory::PlayerStatus);
-  void areaIdChanged(int);
+  void areaIdChanged(theory::AreaId);
 
 private:
   theory::PacketRouter m_router;
@@ -586,7 +586,7 @@ private:
   /**
    * @brief The ID of the area the client is currently in.
    */
-  int m_current_area = theory::NoAreaId;
+  theory::AreaId m_area_id = theory::NoAreaId;
 
   /**
    * @brief The internal name of the character the client is currently using.
@@ -1924,7 +1924,7 @@ private:
    * @return A textual representation of the time left over on the Timer,
    * or `"Timer is inactive"` if the timer wasn't started.
    */
-  QString getAreaTimer(int area_idx, int timer_idx);
+  QString getAreaTimer(theory::AreaId area_idx, int timer_idx);
 
   /**
    * @brief Generates a tsuserver3-style area list to be displayed to the user in the out-of-character chat.
@@ -1937,7 +1937,7 @@ private:
    * @return A QStringList of details about the given area, with every entry in the string list amounting to
    * roughly a separate line.
    */
-  QStringList buildAreaList(int area_idx);
+  QStringList buildAreaList(theory::AreaId area_idx);
 
   /**
    * @brief A convenience function for rolling dice.

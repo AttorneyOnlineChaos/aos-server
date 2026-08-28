@@ -288,7 +288,7 @@ void kenji::AOClient::registerSessionRoutes()
   m_router.registerRoute<theory::ModActionPacket>(&AOClient::process, this);
 }
 
-void kenji::AOClient::changeArea(int new_area)
+void kenji::AOClient::changeArea(theory::AreaId new_area)
 {
   if (areaId() == new_area)
   {
@@ -457,7 +457,7 @@ void kenji::AOClient::handleCommand(QString command, int argc, QStringList argv)
 void kenji::AOClient::arup(theory::AreaUpdatePacket::Property property, bool broadcast)
 {
   const QList<AreaData *> l_areas = server->getAreas();
-  for (int l_area_id = 0; l_area_id < l_areas.size(); ++l_area_id)
+  for (theory::AreaId l_area_id = 0; l_area_id < l_areas.size(); ++l_area_id)
   {
     AreaData *l_area = l_areas.at(l_area_id);
 
@@ -607,17 +607,17 @@ void kenji::AOClient::setName(const QString &f_name)
   }
 }
 
-int kenji::AOClient::areaId() const
+theory::AreaId kenji::AOClient::areaId() const
 {
-  return m_current_area;
+  return m_area_id;
 }
 
-void kenji::AOClient::setAreaId(const int f_area_id)
+void kenji::AOClient::setAreaId(const theory::AreaId f_area_id)
 {
-  if (f_area_id != m_current_area)
+  if (f_area_id != m_area_id)
   {
-    m_current_area = f_area_id;
-    Q_EMIT areaIdChanged(m_current_area);
+    m_area_id = f_area_id;
+    Q_EMIT areaIdChanged(m_area_id);
   }
 }
 

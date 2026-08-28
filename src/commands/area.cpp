@@ -261,7 +261,7 @@ void kenji::AOClient::cmdGetAreas(int argc, QStringList argv)
 
   QStringList l_entries;
   l_entries.append("\n== Currently Online: " + QString::number(server->getPlayerCount()) + " ==");
-  for (int i = 0; i < server->getAreaCount(); i++)
+  for (theory::AreaId i = 0; i < server->getAreaCount(); i++)
   {
     if (server->getAreaById(i)->playerCount() > 0)
     {
@@ -286,7 +286,7 @@ void kenji::AOClient::cmdArea(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool ok;
-  int l_new_area = argv[0].toInt(&ok);
+  theory::AreaId l_new_area = argv[0].toInt(&ok);
   if (!ok || l_new_area >= server->getAreaCount() || l_new_area < 0)
   {
     sendServerMessage("That does not look like a valid area ID.");
@@ -299,7 +299,7 @@ void kenji::AOClient::cmdAreaKick(int argc, QStringList argv)
 {
   AreaData *l_area = server->getAreaById(areaId());
 
-  int target_area_id = 0; // Default to first area of the server
+  theory::AreaId target_area_id = 0; // Default to first area of the server
 
   // Check if a target area is provided
   if (argc >= 2)

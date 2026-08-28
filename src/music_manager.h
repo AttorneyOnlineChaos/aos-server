@@ -34,7 +34,7 @@ public:
   /**
    * @brief Returns the musiclist associated with the area.
    */
-  QList<theory::MusicPlaylist> playlists(int f_area_id);
+  QList<theory::MusicPlaylist> playlists(theory::AreaId f_area_id);
 
   /**
    * @brief Adds a new area to the music_manager.
@@ -43,7 +43,7 @@ public:
    *
    * @return Returns false if registering the area fails.
    */
-  bool registerArea(int f_area_id);
+  bool registerArea(theory::AreaId f_area_id);
 
   /**
    * @brief Validates the song candidate to be played. If validation fails, false is returned.
@@ -69,7 +69,7 @@ public:
    *
    * @return Returns true on success, false on fail.
    */
-  bool addCustomSong(const QString &f_song_name, const QString &f_real_name, theory::TrackLength f_duration, int f_area_id);
+  bool addCustomSong(const QString &f_song_name, const QString &f_real_name, theory::TrackLength f_duration, theory::AreaId f_area_id);
 
   /**
    * @brief Attempts to add the new category to the custom musiclist.
@@ -78,7 +78,7 @@ public:
    *
    * @return Returns true on saccess, false on fail.
    */
-  bool addCustomCategory(const QString &f_category_name, int f_area_id);
+  bool addCustomCategory(const QString &f_category_name, theory::AreaId f_area_id);
 
   /**
    * @brief Removes either a song or a category from the custom list.
@@ -87,7 +87,7 @@ public:
    *
    * @return True on success, false on failure.
    */
-  bool removeCustomMusic(const QString &f_songcategory_name, int f_area_id);
+  bool removeCustomMusic(const QString &f_songcategory_name, theory::AreaId f_area_id);
 
   /**
    * @brief Toggles wether the root list is included for this area.
@@ -95,20 +95,20 @@ public:
    *
    * @return Current state of the music list.
    */
-  bool toggleCustomMusicEnabled(int f_area_id);
+  bool toggleCustomMusicEnabled(theory::AreaId f_area_id);
 
   /**
    * @brief Removes conflicting songnames from the custom list.
    *
    * @param f_area_id Id of the area this is invoked in.
    */
-  void sanitiseCustomMusicList(int f_area_id);
+  void sanitiseCustomMusicList(theory::AreaId f_area_id);
 
   /**
    * @brief Removes all entries from the custom list.
    * @param f_area_id Id of the area custom list.
    */
-  void clearCustomMusicList(int f_area_id);
+  void clearCustomMusicList(theory::AreaId f_area_id);
 
   /**
    * @brief Finds a track.
@@ -116,7 +116,7 @@ public:
    * @param f_area_id Area being searched.
    * @return The track ir nothing.
    */
-  std::optional<theory::MusicTrack> findTrack(const QString &f_file_name, int f_area_id);
+  std::optional<theory::MusicTrack> findTrack(const QString &f_file_name, theory::AreaId f_area_id);
 
 public Q_SLOTS:
 
@@ -128,19 +128,19 @@ public Q_SLOTS:
   /**
    * @brief Sends the area's musiclist to a client.
    */
-  void userJoinedArea(int f_area_index, int f_user_id);
+  void userJoinedArea(theory::AreaId f_area_index, int f_user_id);
 
 private:
   Broadcaster &m_broadcaster;
 
-  void broadcastMusicList(int f_area_id);
+  void broadcastMusicList(theory::AreaId f_area_id);
 
   bool rootContainsTrack(const QString &f_file_name) const;
 
   /**
    * @brief Contains all custom lists of all areas in the server.
    */
-  QHash<int, QList<theory::MusicPlaylist>> m_custom_lists;
+  QHash<theory::AreaId, QList<theory::MusicPlaylist>> m_custom_lists;
 
   /**
    * @brief Server musiclist shared among all areas.
@@ -150,7 +150,7 @@ private:
   /**
    * @brief Wether the global musiclist is prepend and validation when adding custom music.
    */
-  QHash<int, bool> m_global_enabled;
+  QHash<theory::AreaId, bool> m_global_enabled;
 
   /**
    * @brief Contains all server approved content sources.

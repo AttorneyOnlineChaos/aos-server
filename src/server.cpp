@@ -142,7 +142,7 @@ bool kenji::Server::start()
 
   // Assembles the area list
   m_area_names = ConfigManager::sanitizedAreaNames();
-  for (int i = 0; i < m_area_names.length(); i++)
+  for (theory::AreaId i = 0; i < m_area_names.length(); i++)
   {
     QString area_name = QString::number(i) + ":" + m_area_names[i];
     AreaData *l_area = new AreaData(area_name, i, music_manager, *this);
@@ -438,7 +438,7 @@ int kenji::Server::getAreaCount()
   return m_areas.length();
 }
 
-kenji::AreaData *kenji::Server::getAreaById(int f_area_id)
+kenji::AreaData *kenji::Server::getAreaById(theory::AreaId f_area_id)
 {
   AreaData *l_area = nullptr;
 
@@ -460,7 +460,7 @@ QStringList kenji::Server::getAreaNames()
   return m_area_names;
 }
 
-QString kenji::Server::getAreaName(int f_area_id)
+QString kenji::Server::getAreaName(theory::AreaId f_area_id)
 {
   QString l_name;
 

@@ -16,7 +16,7 @@ void kenji::AOClient::cmdDefault(int argc, QStringList argv)
   return;
 }
 
-QStringList kenji::AOClient::buildAreaList(int area_idx)
+QStringList kenji::AOClient::buildAreaList(theory::AreaId area_idx)
 {
   QStringList entries;
   QString area_name = server->getAreaName(area_idx);
@@ -107,7 +107,7 @@ void kenji::AOClient::diceThrower(int sides, int dice, bool p_roll, int roll_mod
   }
 }
 
-QString kenji::AOClient::getAreaTimer(int area_idx, int timer_idx)
+QString kenji::AOClient::getAreaTimer(theory::AreaId area_idx, int timer_idx)
 {
   Timer *l_timer;
   if (timer_idx == 0)
