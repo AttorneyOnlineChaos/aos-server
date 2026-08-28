@@ -40,7 +40,7 @@ QStringList kenji::AOClient::buildAreaList(theory::AreaId area_idx)
   {
     if (l_client->areaId() == area_idx)
     {
-      QString char_entry = "[" + QString::number(l_client->clientId()) + "] " + l_client->character().toString();
+      QString char_entry = "[" + QString::number(l_client->playerId()) + "] " + l_client->character().toString();
       if (l_client->character() == theory::NoCharacterId)
       {
         char_entry += "Spectator";
@@ -53,7 +53,7 @@ QStringList kenji::AOClient::buildAreaList(theory::AreaId area_idx)
       {
         char_entry += " [AFK]";
       }
-      if (area->owners().contains(l_client->clientId()))
+      if (area->owners().contains(l_client->playerId()))
       {
         char_entry.insert(0, "[CM] ");
       }

@@ -31,7 +31,7 @@ void kenji::AOClient::process(const theory::PlayMusicPacket &packet)
     return;
   }
 
-  if (l_area->lockStatus() == theory::AreaLockStatus::Spectatable && !l_area->invited().contains(clientId()) && !checkPermission(ACLRole::BYPASS_LOCKS))
+  if (l_area->lockStatus() == theory::AreaLockStatus::Spectatable && !l_area->invited().contains(playerId()) && !checkPermission(ACLRole::BYPASS_LOCKS))
   {
     sendServerMessage("Spectators are blocked from changing the music.");
     return;

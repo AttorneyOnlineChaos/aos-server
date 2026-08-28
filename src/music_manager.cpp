@@ -288,7 +288,7 @@ void kenji::MusicManager::reloadRequest()
   m_cdns = ConfigManager::cdnList();
 }
 
-void kenji::MusicManager::userJoinedArea(theory::AreaId f_area_index, int f_user_id)
+void kenji::MusicManager::userJoinedArea(theory::AreaId f_area_index, theory::PlayerId f_user_id)
 {
   theory::MusicListPacket l_music_list;
   l_music_list.playlists = playlists(f_area_index);

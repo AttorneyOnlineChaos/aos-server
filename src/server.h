@@ -107,7 +107,7 @@ public:
    *
    * @return A pointer to the client if found, a nullpointer if not.
    */
-  AOClient *getClientByID(int id);
+  AOClient *getClientByID(theory::PlayerId id);
 
   /**
    * @brief Returns the overall player count in the server.
@@ -150,7 +150,7 @@ public:
    *
    * @param The temporary userID of the client.
    */
-  void broadcastToPlayer(const theory::Packet &packet, theory::ClientId playerId) override;
+  void broadcastToPlayer(const theory::Packet &packet, theory::PlayerId playerId) override;
 
   void broadcastMessage(const QString &message, theory::ServerMessagePacket::Level level = theory::ServerMessagePacket::Message) override;
 
@@ -158,7 +158,7 @@ public:
 
   void broadcastMessageToArea(const QString &message, theory::AreaId areaId, theory::ServerMessagePacket::Level level = theory::ServerMessagePacket::Message) override;
 
-  void broadcastMessageToPlayer(const QString &message, theory::ClientId playerId, theory::ServerMessagePacket::Level level = theory::ServerMessagePacket::Message) override;
+  void broadcastMessageToPlayer(const QString &message, theory::PlayerId playerId, theory::ServerMessagePacket::Level level = theory::ServerMessagePacket::Message) override;
 
   /**
    * @brief Returns the server-wide timer.
@@ -168,7 +168,7 @@ public:
   /**
    * @brief Sends the state of the global timer.
    */
-  void shipGlobalTimer(theory::ClientId f_player_id);
+  void shipGlobalTimer(theory::PlayerId f_player_id);
 
   /**
    * @brief Checks if an IP is in a subnet of the IPBanlist.

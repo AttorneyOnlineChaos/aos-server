@@ -21,7 +21,7 @@ void kenji::AOClient::cmdForcePos(int argc, QStringList argv)
 
   bool ok;
   QList<AOClient *> l_targets;
-  int l_target_id = argv[1].toInt(&ok);
+  theory::PlayerId l_target_id = argv[1].toInt(&ok);
   int l_forced_clients = 0;
   if (!ok && argv[1] != "*")
   {
@@ -142,7 +142,7 @@ void kenji::AOClient::cmdPM(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool ok;
-  int l_target_id = argv.takeFirst().toInt(&ok); // using takeFirst removes the ID from our list of arguments...
+  theory::PlayerId l_target_id = argv.takeFirst().toInt(&ok); // using takeFirst removes the ID from our list of arguments...
   if (!ok)
   {
     sendServerMessage("That does not look like a valid ID.");
@@ -160,7 +160,7 @@ void kenji::AOClient::cmdPM(int argc, QStringList argv)
     return;
   }
   QString l_message = argv.join(" "); //...which means it will not end up as part of the message
-  l_target_client->sendServerMessage("Message from " + name() + " (" + QString::number(clientId()) + "): " + l_message);
+  l_target_client->sendServerMessage("Message from " + name() + " (" + QString::number(playerId()) + "): " + l_message);
   sendServerMessage("PM sent to " + QString::number(l_target_id) + ". Message: " + l_message);
 }
 
@@ -213,7 +213,7 @@ void kenji::AOClient::cmdGimp(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool conv_ok = false;
-  int l_uid = argv[0].toInt(&conv_ok);
+  theory::PlayerId l_uid = argv[0].toInt(&conv_ok);
   if (!conv_ok)
   {
     sendServerMessage("Invalid user ID.");
@@ -245,7 +245,7 @@ void kenji::AOClient::cmdUnGimp(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool conv_ok = false;
-  int l_uid = argv[0].toInt(&conv_ok);
+  theory::PlayerId l_uid = argv[0].toInt(&conv_ok);
   if (!conv_ok)
   {
     sendServerMessage("Invalid user ID.");
@@ -277,7 +277,7 @@ void kenji::AOClient::cmdDisemvowel(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool conv_ok = false;
-  int l_uid = argv[0].toInt(&conv_ok);
+  theory::PlayerId l_uid = argv[0].toInt(&conv_ok);
   if (!conv_ok)
   {
     sendServerMessage("Invalid user ID.");
@@ -309,7 +309,7 @@ void kenji::AOClient::cmdUnDisemvowel(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool conv_ok = false;
-  int l_uid = argv[0].toInt(&conv_ok);
+  theory::PlayerId l_uid = argv[0].toInt(&conv_ok);
   if (!conv_ok)
   {
     sendServerMessage("Invalid user ID.");
@@ -341,7 +341,7 @@ void kenji::AOClient::cmdShake(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool conv_ok = false;
-  int l_uid = argv[0].toInt(&conv_ok);
+  theory::PlayerId l_uid = argv[0].toInt(&conv_ok);
   if (!conv_ok)
   {
     sendServerMessage("Invalid user ID.");
@@ -373,7 +373,7 @@ void kenji::AOClient::cmdUnShake(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool conv_ok = false;
-  int l_uid = argv[0].toInt(&conv_ok);
+  theory::PlayerId l_uid = argv[0].toInt(&conv_ok);
   if (!conv_ok)
   {
     sendServerMessage("Invalid user ID.");
@@ -405,7 +405,7 @@ void kenji::AOClient::cmdMedieval(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool conv_ok = false;
-  int l_uid = argv[0].toInt(&conv_ok);
+  theory::PlayerId l_uid = argv[0].toInt(&conv_ok);
   if (!conv_ok)
   {
     sendServerMessage("Invalid user ID.");
@@ -437,7 +437,7 @@ void kenji::AOClient::cmdUnMedieval(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool conv_ok = false;
-  int l_uid = argv[0].toInt(&conv_ok);
+  theory::PlayerId l_uid = argv[0].toInt(&conv_ok);
   if (!conv_ok)
   {
     sendServerMessage("Invalid user ID.");
@@ -496,7 +496,7 @@ void kenji::AOClient::cmdAfk(int argc, QStringList argv)
 void kenji::AOClient::cmdCharCurse(int argc, QStringList argv)
 {
   bool conv_ok = false;
-  int l_uid = argv[0].toInt(&conv_ok);
+  theory::PlayerId l_uid = argv[0].toInt(&conv_ok);
   if (!conv_ok)
   {
     sendServerMessage("Invalid user ID.");
@@ -565,7 +565,7 @@ void kenji::AOClient::cmdUnCharCurse(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool conv_ok = false;
-  int l_uid = argv[0].toInt(&conv_ok);
+  theory::PlayerId l_uid = argv[0].toInt(&conv_ok);
   if (!conv_ok)
   {
     sendServerMessage("Invalid user ID.");
@@ -606,7 +606,7 @@ void kenji::AOClient::cmdForceCharSelect(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool ok = false;
-  int l_target_id = argv[0].toInt(&ok);
+  theory::PlayerId l_target_id = argv[0].toInt(&ok);
   if (!ok)
   {
     sendServerMessage("This ID does not look valid. Please use the client ID.");
@@ -643,7 +643,7 @@ void kenji::AOClient::cmdA(int argc, QStringList argv)
     sendServerMessage("This does not look like a valid AreaID.");
     return;
   }
-  if (!l_area->owners().contains(clientId()))
+  if (!l_area->owners().contains(playerId()))
   {
     sendServerMessage("You are not CM in that area.");
     return;
@@ -668,7 +668,7 @@ void kenji::AOClient::cmdS(int argc, QStringList argv)
 
   for (theory::AreaId i = 0; i <= l_all_areas; i++)
   {
-    if (server->getAreaById(i)->owners().contains(clientId()))
+    if (server->getAreaById(i)->owners().contains(playerId()))
     {
       theory::OocMessagePacket l_packet;
       l_packet.name = "[CM]" + l_sender_name;

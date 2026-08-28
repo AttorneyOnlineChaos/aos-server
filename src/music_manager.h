@@ -128,7 +128,7 @@ public Q_SLOTS:
   /**
    * @brief Sends the area's musiclist to a client.
    */
-  void userJoinedArea(theory::AreaId f_area_index, int f_user_id);
+  void userJoinedArea(theory::AreaId f_area_index, theory::PlayerId f_user_id);
 
 private:
   Broadcaster &m_broadcaster;

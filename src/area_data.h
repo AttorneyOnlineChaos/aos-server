@@ -168,7 +168,7 @@ public:
    * @param f_userId The user ID of the client who left. The default value is '-1', This ID is technically
    * impossible.
    */
-  void removeClient(theory::CharacterId f_charId = theory::NoCharacterId, int f_userId = -1);
+  void removeClient(theory::CharacterId f_charId = theory::NoCharacterId, theory::PlayerId f_userId = theory::NoPlayerId);
 
   /**
    * @brief A client in the area joined recently.
@@ -181,7 +181,7 @@ public:
    * @param f_userId The user ID of the client who left. The default value is '-1', This ID is technically
    * impossible.
    */
-  void addClient(theory::CharacterId f_charId = theory::NoCharacterId, int f_userId = -1);
+  void addClient(theory::CharacterId f_charId = theory::NoCharacterId, theory::PlayerId f_userId = theory::NoPlayerId);
 
   /**
    * @brief Returns a copy of the list of owners of this area.
@@ -190,7 +190,7 @@ public:
    *
    * @see #m_owners
    */
-  QList<int> owners() const;
+  QList<theory::PlayerId> owners() const;
 
   /**
    * @brief Adds a client to the list of onwers for the area.
@@ -201,7 +201,7 @@ public:
    *
    * @see #m_owners
    */
-  void addOwner(int f_clientId);
+  void addOwner(theory::PlayerId f_clientId);
 
   /**
    * @brief Removes the target client from the list of owners.
@@ -215,7 +215,7 @@ public:
    *
    * @see #m_owners
    */
-  bool removeOwner(int f_clientId);
+  bool removeOwner(theory::PlayerId f_clientId);
 
   /**
    * @brief Returns true if blankposting is allowed in the area.
@@ -311,7 +311,7 @@ public:
 
   Timer *timer(theory::TimerId f_timer_id) const;
 
-  void shipTimers(theory::ClientId f_player_id);
+  void shipTimers(theory::PlayerId f_player_id);
 
   void synchronize();
 
@@ -439,7 +439,7 @@ public:
    *
    * @return A list of client IDs.
    */
-  QList<int> invited() const;
+  QList<theory::PlayerId> invited() const;
 
   /**
    * @brief Invites a client to the area.
@@ -448,7 +448,7 @@ public:
    *
    * @return True if the client was successfully invited. False if they were already in the list of invited people.
    */
-  bool invite(int f_clientId);
+  bool invite(theory::PlayerId f_clientId);
 
   /**
    * @brief Removes a client from the list of people invited to the area.
@@ -457,7 +457,7 @@ public:
    *
    * @return True if the client was successfully uninvited. False if they were never in the list of invited people.
    */
-  bool uninvite(int f_clientId);
+  bool uninvite(theory::PlayerId f_clientId);
 
   /**
    * @brief Returns the name of the background for the area.
@@ -857,7 +857,7 @@ public:
   /**
    * @brief Returns a constant that includes all currently joined userids.
    */
-  QList<int> joinedIDs() const;
+  QList<theory::PlayerId> joinedIDs() const;
 
   /**
    * @brief Returns whether a game message may be broadcasted or not.
@@ -913,7 +913,7 @@ Q_SIGNALS:
    *
    * @param f_user_id The user ID of the client.
    */
-  void userJoinedArea(theory::AreaId f_area_index, int f_user_id);
+  void userJoinedArea(theory::AreaId f_area_index, theory::PlayerId f_user_id);
 
 private:
   /**
@@ -970,12 +970,12 @@ private:
   /**
    * @brief The IDs of all the owners (or Case Makers / CMs) of the area.
    */
-  QList<int> m_owners;
+  QList<theory::PlayerId> m_owners;
 
   /**
    * @brief The list of clients invited to the area.
    */
-  QList<int> m_invited;
+  QList<theory::PlayerId> m_invited;
 
   /**
    * @brief The status of the area's accessibility to clients.
@@ -1123,7 +1123,7 @@ private:
   /**
    * @brief Collection of joined IDs to this area.
    */
-  QList<int> m_joined_ids;
+  QList<theory::PlayerId> m_joined_ids;
 
   // Jukebox specific members
   /**

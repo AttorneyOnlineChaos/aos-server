@@ -29,7 +29,7 @@ void kenji::AOClient::cmdPlay(int argc, QStringList argv)
   }
   AreaData *l_area = server->getAreaById(areaId());
   const ACLRole l_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
-  if (!l_area->owners().contains(clientId()) && !l_area->isPlayEnabled() && !l_role.checkPermission(ACLRole::CM))
+  if (!l_area->owners().contains(playerId()) && !l_area->isPlayEnabled() && !l_role.checkPermission(ACLRole::CM))
   { // Make sure we have permission to play music
     sendServerMessage("Free music play is disabled in this area.");
     return;
@@ -60,7 +60,7 @@ void kenji::AOClient::cmdPlayAmbience(int argc, QStringList argv)
     return;
   }
   AreaData *l_area = server->getAreaById(areaId());
-  if (!l_area->owners().contains(clientId()) && !l_area->isPlayEnabled())
+  if (!l_area->owners().contains(playerId()) && !l_area->isPlayEnabled())
   { // Make sure we have permission to play music
     sendServerMessage("Free ambience play is disabled in this area.");
     return;
@@ -108,7 +108,7 @@ void kenji::AOClient::cmdBlockDj(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool conv_ok = false;
-  int l_uid = argv[0].toInt(&conv_ok);
+  theory::PlayerId l_uid = argv[0].toInt(&conv_ok);
   if (!conv_ok)
   {
     sendServerMessage("Invalid user ID.");
@@ -140,7 +140,7 @@ void kenji::AOClient::cmdUnBlockDj(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool conv_ok = false;
-  int l_uid = argv[0].toInt(&conv_ok);
+  theory::PlayerId l_uid = argv[0].toInt(&conv_ok);
   if (!conv_ok)
   {
     sendServerMessage("Invalid user ID.");

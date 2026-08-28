@@ -191,7 +191,7 @@ void kenji::AOClient::markExpired()
   m_session_timer->stop();
   setSessionStatus(SessionStatus::Expired);
 
-  server->getAreaById(areaId())->removeClient(m_character, clientId());
+  server->getAreaById(areaId())->removeClient(m_character, playerId());
 
   bool l_updateLocks = false;
 
@@ -203,7 +203,7 @@ void kenji::AOClient::markExpired()
       l_area->uninvite(m_id);
     }
 
-    l_updateLocks = l_updateLocks || l_area->removeOwner(clientId());
+    l_updateLocks = l_updateLocks || l_area->removeOwner(playerId());
   }
 
   if (l_updateLocks)
@@ -295,7 +295,7 @@ void kenji::AOClient::changeArea(theory::AreaId new_area)
     sendServerMessage("You are already in area " + server->getAreaName(areaId()));
     return;
   }
-  if (server->getAreaById(new_area)->lockStatus() == theory::AreaLockStatus::Locked && !server->getAreaById(new_area)->invited().contains(clientId()) && !checkPermission(ACLRole::BYPASS_LOCKS))
+  if (server->getAreaById(new_area)->lockStatus() == theory::AreaLockStatus::Locked && !server->getAreaById(new_area)->invited().contains(playerId()) && !checkPermission(ACLRole::BYPASS_LOCKS))
   {
     sendServerMessage("Area " + server->getAreaName(new_area) + " is locked.");
     return;
@@ -305,14 +305,14 @@ void kenji::AOClient::changeArea(theory::AreaId new_area)
   {
     server->getAreaById(areaId())->changeCharacter(m_character, theory::NoCharacterId);
   }
-  server->getAreaById(areaId())->removeClient(m_character, clientId());
+  server->getAreaById(areaId())->removeClient(m_character, playerId());
   bool l_character_taken = false;
   if (server->getAreaById(new_area)->charactersTaken().contains(m_character))
   {
     setCharacter(theory::NoCharacterId);
     l_character_taken = true;
   }
-  server->getAreaById(new_area)->addClient(m_character, clientId());
+  server->getAreaById(new_area)->addClient(m_character, playerId());
   setAreaId(new_area);
   sendEvidenceList(server->getAreaById(new_area));
 
@@ -338,7 +338,7 @@ void kenji::AOClient::changeArea(theory::AreaId new_area)
     l_accepted.character = theory::NoCharacterId;
     shipPacket(l_accepted);
   }
-  server->getAreaById(areaId())->shipTimers(clientId());
+  server->getAreaById(areaId())->shipTimers(playerId());
   sendServerMessage("You moved to area " + server->getAreaName(areaId()));
   if (server->getAreaById(areaId())->sendAreaMessageOnJoin())
   {
@@ -554,7 +554,7 @@ bool kenji::AOClient::checkPermission(ACLRole::Permission f_permission) const
     return true;
   }
 
-  if ((f_permission == ACLRole::CM) && server->getAreaById(areaId())->owners().contains(clientId()))
+  if ((f_permission == ACLRole::CM) && server->getAreaById(areaId())->owners().contains(playerId()))
   {
     return true; // I'm sorry for this hack.
   }
@@ -588,7 +588,7 @@ bool kenji::AOClient::isAuthenticated() const
   return m_authenticated;
 }
 
-int kenji::AOClient::clientId() const
+theory::PlayerId kenji::AOClient::playerId() const
 {
   return m_id;
 }
@@ -677,17 +677,14 @@ void kenji::AOClient::onAfkTimeout()
   }
 }
 
-kenji::AOClient::AOClient(Server *p_server, ULogger &logger, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &f_remote_ip, QObject *parent, int user_id, MusicManager *p_manager)
+kenji::AOClient::AOClient(Server *p_server, ULogger &logger, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &f_remote_ip, QObject *parent, theory::PlayerId id, MusicManager *p_manager)
     : QObject(parent)
     , m_remote_ip(f_remote_ip)
     , m_socket(socket)
     , m_music_manager(p_manager)
-    , m_last_wtce_time(0)
-    , m_id(user_id)
+    , m_id(id)
     , server(p_server)
     , m_logger(logger)
-    , rate_limit_tick(0)
-    , packet_count(0)
 {
   m_afk_timer = new QTimer(this);
   m_afk_timer->setSingleShot(true);

@@ -80,7 +80,7 @@ bool kenji::AOClient::checkEvidenceAccess(AreaData *area)
 void kenji::AOClient::updateJudgeLog(AreaData *area, AOClient *client, const QString &action)
 {
   QString l_timestamp = QTime::currentTime().toString("hh:mm:ss");
-  QString l_uid = QString::number(client->clientId());
+  QString l_uid = QString::number(client->playerId());
   QString l_char_name = client->character().toString();
   QString l_ipid = client->getIpid();
   QString l_message = action;

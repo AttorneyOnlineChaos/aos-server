@@ -28,7 +28,7 @@ public:
   AOClient *create(const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &address);
   void remove(AOClient *client);
 
-  AOClient *client(int id) const;
+  AOClient *client(theory::PlayerId id) const;
   QList<AOClient *> clients() const;
 
   using Condition = std::function<bool(const AOClient *)>;
@@ -49,7 +49,7 @@ private:
   MusicManager &_musicManager;
 
   int _capacity = 0;
-  QStack<int> _availableIds;
-  QMap<int, AOClient *> _clients;
+  QStack<theory::PlayerId> _availableIds;
+  QMap<theory::PlayerId, AOClient *> _clients;
 };
 } // namespace kenji

@@ -44,7 +44,7 @@ void kenji::AOClient::process(const theory::ModActionPacket &packet)
     }
   }
 
-  AOClient *target = server->getClientByID(packet.targetClientId);
+  AOClient *target = server->getClientByID(packet.targetPlayerId);
   if (target == nullptr)
   {
     sendServerMessage("User not found.");

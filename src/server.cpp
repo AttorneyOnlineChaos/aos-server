@@ -354,14 +354,14 @@ void kenji::Server::broadcastToArea(const theory::Packet &packet, theory::AreaId
     return;
   }
 
-  const QList<int> l_client_ids = l_area->joinedIDs();
-  for (const int l_client_id : l_client_ids)
+  const QList<theory::PlayerId> l_player_ids = l_area->joinedIDs();
+  for (const theory::PlayerId l_player_id : l_player_ids)
   {
-    getClientByID(l_client_id)->shipPacket(packet);
+    getClientByID(l_player_id)->shipPacket(packet);
   }
 }
 
-void kenji::Server::broadcastToPlayer(const theory::Packet &packet, theory::ClientId playerId)
+void kenji::Server::broadcastToPlayer(const theory::Packet &packet, theory::PlayerId playerId)
 {
   AOClient *l_client = getClientByID(playerId);
   if (l_client != nullptr)
@@ -395,7 +395,7 @@ void kenji::Server::broadcastMessageToArea(const QString &message, theory::AreaI
   broadcastToArea(l_packet, areaId);
 }
 
-void kenji::Server::broadcastMessageToPlayer(const QString &message, theory::ClientId playerId, theory::ServerMessagePacket::Level level)
+void kenji::Server::broadcastMessageToPlayer(const QString &message, theory::PlayerId playerId, theory::ServerMessagePacket::Level level)
 {
   theory::ServerMessagePacket l_packet;
   l_packet.message = message;
@@ -413,7 +413,7 @@ QList<kenji::AOClient *> kenji::Server::getClientsByHwid(const QString &f_hwid)
   return m_client_registry->clientsByHwid(f_hwid);
 }
 
-kenji::AOClient *kenji::Server::getClientByID(int id)
+kenji::AOClient *kenji::Server::getClientByID(theory::PlayerId id)
 {
   return m_client_registry->client(id);
 }
@@ -520,7 +520,7 @@ kenji::Timer *kenji::Server::globalTimer() const
   return m_global_timer;
 }
 
-void kenji::Server::shipGlobalTimer(theory::ClientId f_player_id)
+void kenji::Server::shipGlobalTimer(theory::PlayerId f_player_id)
 {
   broadcastToPlayer(makeTimerPacket(*m_global_timer, theory::TimerPacket::Visibility), f_player_id);
   broadcastToPlayer(makeTimerPacket(*m_global_timer, theory::TimerPacket::State), f_player_id);

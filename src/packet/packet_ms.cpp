@@ -54,7 +54,7 @@ void kenji::AOClient::process(const theory::IcMessagePacket &packet)
 
   server->broadcastToArea(l_message, areaId());
 
-  m_logger.logIC(l_area->name(), m_ipid, name(), QString::number(clientId()), (m_character.toString() + " " + characterName().value_or(QString())), m_last_message);
+  m_logger.logIC(l_area->name(), m_ipid, name(), QString::number(playerId()), (m_character.toString() + " " + characterName().value_or(QString())), m_last_message);
   l_area->updateLastICMessage(l_message);
 
   l_area->startMessageFloodguard(ConfigManager::messageFloodguard());
@@ -71,7 +71,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
     return std::nullopt;
   }
   AreaData *l_area = server->getAreaById(areaId());
-  if (l_area->lockStatus() == theory::AreaLockStatus::Spectatable && !l_area->invited().contains(clientId()) && !checkPermission(ACLRole::BYPASS_LOCKS))
+  if (l_area->lockStatus() == theory::AreaLockStatus::Spectatable && !l_area->invited().contains(playerId()) && !checkPermission(ACLRole::BYPASS_LOCKS))
   {
     // Non-invited players cannot speak in spectatable areas
     return std::nullopt;
@@ -257,9 +257,9 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
   bool l_pairing = false;
   if (l_message.pair)
   {
-    for (int l_client_id : l_area->joinedIDs())
+    for (theory::PlayerId l_player_id : l_area->joinedIDs())
     {
-      AOClient *l_client = server->getClientByID(l_client_id);
+      AOClient *l_client = server->getClientByID(l_player_id);
       if (l_client == nullptr)
       {
         continue;

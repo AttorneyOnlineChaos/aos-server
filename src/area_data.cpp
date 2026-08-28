@@ -84,7 +84,7 @@ const QMap<QString, theory::AreaStatus> kenji::AreaData::map_statuses = {
     {"STARTING", theory::AreaStatus::Starting},
 };
 
-void kenji::AreaData::removeClient(theory::CharacterId f_charId, int f_userId)
+void kenji::AreaData::removeClient(theory::CharacterId f_charId, theory::PlayerId f_userId)
 {
   --m_playerCount;
 
@@ -95,7 +95,7 @@ void kenji::AreaData::removeClient(theory::CharacterId f_charId, int f_userId)
   m_joined_ids.removeAll(f_userId);
 }
 
-void kenji::AreaData::addClient(theory::CharacterId f_charId, int f_userId)
+void kenji::AreaData::addClient(theory::CharacterId f_charId, theory::PlayerId f_userId)
 {
   ++m_playerCount;
 
@@ -119,18 +119,18 @@ void kenji::AreaData::addClient(theory::CharacterId f_charId, int f_userId)
   m_broadcaster.broadcastToPlayer(l_music, f_userId);
 }
 
-QList<int> kenji::AreaData::owners() const
+QList<theory::PlayerId> kenji::AreaData::owners() const
 {
   return m_owners;
 }
 
-void kenji::AreaData::addOwner(int f_clientId)
+void kenji::AreaData::addOwner(theory::PlayerId f_clientId)
 {
   m_owners.append(f_clientId);
   m_invited.append(f_clientId);
 }
 
-bool kenji::AreaData::removeOwner(int f_clientId)
+bool kenji::AreaData::removeOwner(theory::PlayerId f_clientId)
 {
   m_owners.removeAll(f_clientId);
   m_invited.removeAll(f_clientId);
@@ -194,7 +194,7 @@ void kenji::AreaData::spectatable()
   m_locked = theory::AreaLockStatus::Spectatable;
 }
 
-bool kenji::AreaData::invite(int f_clientId)
+bool kenji::AreaData::invite(theory::PlayerId f_clientId)
 {
   if (m_invited.contains(f_clientId))
   {
@@ -205,7 +205,7 @@ bool kenji::AreaData::invite(int f_clientId)
   return true;
 }
 
-bool kenji::AreaData::uninvite(int f_clientId)
+bool kenji::AreaData::uninvite(theory::PlayerId f_clientId)
 {
   if (!m_invited.contains(f_clientId))
   {
@@ -231,7 +231,7 @@ kenji::Timer *kenji::AreaData::timer(theory::TimerId f_timer_id) const
   return m_timers.value(f_timer_id, nullptr);
 }
 
-void kenji::AreaData::shipTimers(theory::ClientId f_player_id)
+void kenji::AreaData::shipTimers(theory::PlayerId f_player_id)
 {
   for (Timer *l_timer : m_timers)
   {
@@ -361,7 +361,7 @@ void kenji::AreaData::changeStatus(theory::AreaStatus status)
   m_status = status;
 }
 
-QList<int> kenji::AreaData::invited() const
+QList<theory::PlayerId> kenji::AreaData::invited() const
 {
   return m_invited;
 }
@@ -748,7 +748,7 @@ QString kenji::AreaData::addJukeboxSong(const QString &f_song)
   return "Unable to add song. Song already in Jukebox.";
 }
 
-QList<int> kenji::AreaData::joinedIDs() const
+QList<theory::PlayerId> kenji::AreaData::joinedIDs() const
 {
   return m_joined_ids;
 }

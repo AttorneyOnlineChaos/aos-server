@@ -14,7 +14,7 @@ void kenji::PlayerStateObserver::registerClient(AOClient *client)
   Q_ASSERT(!m_client_list.contains(client));
 
   theory::PlayerRosterPacket l_roster;
-  l_roster.clientId = client->clientId();
+  l_roster.playerId = client->playerId();
   l_roster.action = theory::PlayerRosterPacket::Add;
   broadcast(l_roster);
 
@@ -48,7 +48,7 @@ void kenji::PlayerStateObserver::unregisterClient(AOClient *client)
   m_client_list.removeAll(client);
 
   theory::PlayerRosterPacket l_roster;
-  l_roster.clientId = client->clientId();
+  l_roster.playerId = client->playerId();
   l_roster.action = theory::PlayerRosterPacket::Remove;
   broadcast(l_roster);
 }
@@ -56,7 +56,7 @@ void kenji::PlayerStateObserver::unregisterClient(AOClient *client)
 theory::PlayerUpdatePacket kenji::PlayerStateObserver::playerUpdate(const AOClient &client, theory::PlayerUpdatePacket::Property property)
 {
   theory::PlayerUpdatePacket packet;
-  packet.clientId = client.clientId();
+  packet.playerId = client.playerId();
   packet.property = property;
 
   switch (property)
@@ -97,7 +97,7 @@ void kenji::PlayerStateObserver::shipRoster(AOClient *target)
   for (AOClient *i_client : qAsConst(m_client_list))
   {
     theory::PlayerRosterPacket l_entry;
-    l_entry.clientId = i_client->clientId();
+    l_entry.playerId = i_client->playerId();
     l_entry.action = theory::PlayerRosterPacket::Add;
     target->shipPacket(l_entry);
 

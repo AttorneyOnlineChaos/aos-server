@@ -83,7 +83,7 @@ public:
    * @param user_id The user ID of the client.
    * @param parent Qt-based parent, passed along to inherited constructor from QObject.
    */
-  AOClient(Server *p_server, ULogger &logger, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &f_remote_ip, QObject *parent = nullptr, int user_id = 0, MusicManager *p_manager = nullptr);
+  AOClient(Server *p_server, ULogger &logger, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &f_remote_ip, QObject *parent = nullptr, theory::PlayerId id = theory::NoPlayerId, MusicManager *p_manager = nullptr);
 
   /**
    * @brief Destructor for the AOClient instance.
@@ -139,7 +139,7 @@ public:
   void beginSession();
   void resumeSession();
 
-  int clientId() const;
+  theory::PlayerId playerId() const;
 
   QString name() const;
   void setName(const QString &f_name);
@@ -464,7 +464,7 @@ public:
    *
    * @details Used to filter out potential spam.
    */
-  long m_last_wtce_time;
+  long m_last_wtce_time = 0;
 
   /**
    * @name Packet helper global variables
@@ -581,7 +581,7 @@ private:
   /**
    * @brief The user ID of the client.
    */
-  int m_id;
+  theory::PlayerId m_id;
 
   /**
    * @brief The ID of the area the client is currently in.
@@ -2024,12 +2024,12 @@ private:
   /**
    * @brief Timestamp (in seconds since Epoch) of the current tick.
    */
-  qint64 rate_limit_tick;
+  qint64 rate_limit_tick = 0;
 
   /**
    * @brief Number of packets received for the current tick.
    */
-  int packet_count;
+  int packet_count = 0;
 
 Q_SIGNALS:
 

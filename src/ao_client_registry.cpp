@@ -28,7 +28,7 @@ QList<kenji::AOClient *> kenji::AOClientRegistry::clients() const
   return _clients.values();
 }
 
-kenji::AOClient *kenji::AOClientRegistry::client(int id) const
+kenji::AOClient *kenji::AOClientRegistry::client(theory::PlayerId id) const
 {
   return _clients.value(id);
 }
@@ -73,7 +73,7 @@ kenji::AOClient *kenji::AOClientRegistry::create(const theory::Shared<theory::Ca
     return nullptr;
   }
 
-  const int id = _availableIds.pop();
+  const theory::PlayerId id = _availableIds.pop();
   AOClient *client = new AOClient(&_server, _logger, socket, address, this, id, &_musicManager);
   _clients.insert(id, client);
   Q_EMIT clientAdded(client);
@@ -82,13 +82,13 @@ kenji::AOClient *kenji::AOClientRegistry::create(const theory::Shared<theory::Ca
 
 void kenji::AOClientRegistry::remove(AOClient *client)
 {
-  if (!client || _clients.value(client->clientId()) != client)
+  if (!client || _clients.value(client->playerId()) != client)
   {
     return;
   }
 
-  _clients.remove(client->clientId());
-  _availableIds.push(client->clientId());
+  _clients.remove(client->playerId());
+  _availableIds.push(client->playerId());
   Q_EMIT clientRemoved(client);
   client->deleteLater();
 }

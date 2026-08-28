@@ -45,8 +45,8 @@ void kenji::AOClient::shipSnapshot()
 
   fullArup(); // Give client all the area data
 
-  server->shipGlobalTimer(clientId());
-  l_area->shipTimers(clientId());
+  server->shipGlobalTimer(playerId());
+  l_area->shipTimers(playerId());
 }
 
 void kenji::AOClient::beginSession()
@@ -54,10 +54,10 @@ void kenji::AOClient::beginSession()
   shipSnapshot();
 
   theory::WelcomePacket l_welcome;
-  l_welcome.clientId = clientId();
+  l_welcome.playerId = playerId();
   shipPacket(l_welcome);
 
-  server->getAreaById(areaId())->addClient(theory::NoCharacterId, clientId());
+  server->getAreaById(areaId())->addClient(theory::NoCharacterId, playerId());
 }
 
 void kenji::AOClient::resumeSession()
@@ -65,7 +65,7 @@ void kenji::AOClient::resumeSession()
   shipSnapshot();
 
   theory::WelcomePacket l_welcome;
-  l_welcome.clientId = clientId();
+  l_welcome.playerId = playerId();
   shipPacket(l_welcome);
 
   sendCharacterSelection();

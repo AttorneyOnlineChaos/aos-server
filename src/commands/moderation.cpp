@@ -157,7 +157,7 @@ void kenji::AOClient::cmdMods(int argc, QStringList argv)
         l_entries << "Role:" << l_client->m_acl_role_id;
       }
       l_entries << "OOC name: " + l_client->name();
-      l_entries << "ID: " + QString::number(l_client->clientId());
+      l_entries << "ID: " + QString::number(l_client->playerId());
       l_entries << "Area: " + QString::number(l_client->areaId());
       l_entries << "Character: " + l_client->character().toString();
       l_online_count++;
@@ -355,7 +355,7 @@ void kenji::AOClient::cmdMute(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool conv_ok = false;
-  int l_uid = argv[0].toInt(&conv_ok);
+  theory::PlayerId l_uid = argv[0].toInt(&conv_ok);
   if (!conv_ok)
   {
     sendServerMessage("Invalid user ID.");
@@ -387,7 +387,7 @@ void kenji::AOClient::cmdUnMute(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool conv_ok = false;
-  int l_uid = argv[0].toInt(&conv_ok);
+  theory::PlayerId l_uid = argv[0].toInt(&conv_ok);
   if (!conv_ok)
   {
     sendServerMessage("Invalid user ID.");
@@ -419,7 +419,7 @@ void kenji::AOClient::cmdOocMute(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool conv_ok = false;
-  int l_uid = argv[0].toInt(&conv_ok);
+  theory::PlayerId l_uid = argv[0].toInt(&conv_ok);
   if (!conv_ok)
   {
     sendServerMessage("Invalid user ID.");
@@ -451,7 +451,7 @@ void kenji::AOClient::cmdOocUnMute(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool conv_ok = false;
-  int l_uid = argv[0].toInt(&conv_ok);
+  theory::PlayerId l_uid = argv[0].toInt(&conv_ok);
   if (!conv_ok)
   {
     sendServerMessage("Invalid user ID.");
@@ -483,7 +483,7 @@ void kenji::AOClient::cmdBlockWtce(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool conv_ok = false;
-  int l_uid = argv[0].toInt(&conv_ok);
+  theory::PlayerId l_uid = argv[0].toInt(&conv_ok);
   if (!conv_ok)
   {
     sendServerMessage("Invalid user ID.");
@@ -515,7 +515,7 @@ void kenji::AOClient::cmdUnBlockWtce(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool conv_ok = false;
-  int l_uid = argv[0].toInt(&conv_ok);
+  theory::PlayerId l_uid = argv[0].toInt(&conv_ok);
   if (!conv_ok)
   {
     sendServerMessage("Invalid user ID.");
@@ -638,7 +638,7 @@ void kenji::AOClient::cmdPermitSaving(int argc, QStringList argv)
     return;
   }
   l_client->m_testimony_saving = true;
-  sendServerMessage("Testimony saving has been enabled for client " + QString::number(l_client->clientId()));
+  sendServerMessage("Testimony saving has been enabled for client " + QString::number(l_client->playerId()));
 }
 
 void kenji::AOClient::cmdKickUid(int argc, QStringList argv)
@@ -654,7 +654,7 @@ void kenji::AOClient::cmdKickUid(int argc, QStringList argv)
   }
 
   bool conv_ok = false;
-  int l_uid = argv[0].toInt(&conv_ok);
+  theory::PlayerId l_uid = argv[0].toInt(&conv_ok);
   if (!conv_ok)
   {
     sendServerMessage("Invalid user ID.");
