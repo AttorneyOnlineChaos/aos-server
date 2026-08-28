@@ -392,7 +392,7 @@ void kenji::AOClient::cmdSetBackground(int argc, QStringList argv)
       l_background.display = true;
       server->broadcastToArea(l_background, areaId());
       theory::MusicChangedPacket l_ambience;
-      l_ambience.characterId = theory::NoCharacterId;
+      l_ambience.character = theory::NoCharacterId;
       l_ambience.characterName = characterName();
       l_ambience.channel = theory::MusicChannel::Ambient;
       l_ambience.loop = true;
@@ -402,7 +402,7 @@ void kenji::AOClient::cmdSetBackground(int argc, QStringList argv)
         l_ambience.track = ambience_name;
       }
       server->broadcastToArea(l_ambience, areaId());
-      sendServerMessageArea(character() + " changed the background to " + f_background);
+      sendServerMessageArea(m_character.toString() + " changed the background to " + f_background);
     }
     else
     {
@@ -440,11 +440,11 @@ void kenji::AOClient::cmdSetSide(int argc, QStringList argv)
   server->broadcastToArea(l_background, areaId());
   if (l_side)
   {
-    sendServerMessageArea(character() + " locked the background side to " + l_side.value());
+    sendServerMessageArea(m_character.toString() + " locked the background side to " + l_side.value());
   }
   else
   {
-    sendServerMessageArea(character() + " unlocked the background side");
+    sendServerMessageArea(m_character.toString() + " unlocked the background side");
   }
 }
 
@@ -460,7 +460,7 @@ void kenji::AOClient::cmdBgLock(int argc, QStringList argv)
     l_area->toggleBgLock();
   }
 
-  sendServerMessageArea(character() + " locked the background.");
+  sendServerMessageArea(m_character.toString() + " locked the background.");
 }
 
 void kenji::AOClient::cmdBgUnlock(int argc, QStringList argv)
@@ -475,7 +475,7 @@ void kenji::AOClient::cmdBgUnlock(int argc, QStringList argv)
     l_area->toggleBgLock();
   }
 
-  sendServerMessageArea(character() + " unlocked the background.");
+  sendServerMessageArea(m_character.toString() + " unlocked the background.");
 }
 
 void kenji::AOClient::cmdStatus(int argc, QStringList argv)
@@ -507,7 +507,7 @@ void kenji::AOClient::cmdStatus(int argc, QStringList argv)
 
   l_area->changeStatus(l_status);
   arup(theory::AreaUpdatePacket::Status, true);
-  sendServerMessageArea(character() + " changed status to " + l_arg);
+  sendServerMessageArea(m_character.toString() + " changed status to " + l_arg);
 }
 
 void kenji::AOClient::cmdJudgeLog(int argc, QStringList argv)
@@ -614,17 +614,16 @@ void kenji::AOClient::cmdWebfiles(int argc, QStringList argv)
 
   const QList<AOClient *> l_clients = server->getClients();
   QStringList l_weblinks;
+  QList<theory::CharacterId> l_listed_characters;
   for (AOClient *l_client : l_clients)
   {
-    if (l_client->m_current_iniswap.isEmpty() || l_client->areaId() != areaId())
+    if (l_client->areaId() != areaId() || l_client->isSpectator() || l_listed_characters.contains(l_client->character()))
     {
       continue;
     }
 
-    if (l_client->character().toLower() != l_client->m_current_iniswap.toLower())
-    {
-      l_weblinks.append("https://attorneyonline.github.io/webDownloader/index.html?char=" + l_client->m_current_iniswap);
-    }
+    l_listed_characters.append(l_client->character());
+    l_weblinks.append("https://attorneyonline.github.io/webDownloader/index.html?char=" + l_client->character().toString());
   }
   sendServerMessage("Character files:\n" + l_weblinks.join("\n"));
 }

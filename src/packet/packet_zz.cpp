@@ -15,7 +15,7 @@ void kenji::AOClient::process(const theory::ModCallPacket &packet)
   QString l_name = name();
   if (l_name.isEmpty())
   {
-    l_name = character();
+    l_name = m_character.toString();
   }
 
   QString l_areaName = server->getAreaById(areaId())->name();
@@ -44,7 +44,7 @@ void kenji::AOClient::process(const theory::ModCallPacket &packet)
       l_client->shipPacket(l_notice);
     }
   }
-  m_logger.logModcall(l_areaName, m_ipid, name(), QString::number(clientId()), (character() + " " + characterName().value_or(QString())));
+  m_logger.logModcall(l_areaName, m_ipid, name(), QString::number(clientId()), (m_character.toString() + " " + characterName().value_or(QString())));
 
   if (ConfigManager::discordModcallWebhookEnabled())
   {

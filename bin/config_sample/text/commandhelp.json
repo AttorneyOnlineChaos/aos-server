@@ -290,8 +290,8 @@
       "names": [
          "switch"
       ],
-      "usage":"/switch <ID>",
-      "text":"Switches to a different character based on character ID."
+      "usage":"/switch <character>",
+      "text":"Switches to a different character by name."
    },
    {
       "names": [
@@ -604,7 +604,7 @@
          "allow_iniswap"
       ],
       "usage":"/allowiniswap",
-      "text":"Toggles whether iniswaps are allowed in the current area. For no apparent reason, this also can be used to disable it. This command takes no arguments."
+      "text":"Toggles whether clients may select characters that are not on the server's character list. This command takes no arguments."
    },
    {
       "names": [

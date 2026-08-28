@@ -314,8 +314,8 @@ void kenji::AOClient::cmdNoteCard(int argc, QStringList argv)
 
   AreaData *l_area = server->getAreaById(areaId());
   QString l_notecard = argv.join(" ");
-  l_area->addNotecard(character(), l_notecard);
-  sendServerMessageArea(character() + " wrote a note card.");
+  l_area->addNotecard(m_character.toString(), l_notecard);
+  sendServerMessageArea(m_character.toString() + " wrote a note card.");
 }
 
 void kenji::AOClient::cmdNoteCardClear(int argc, QStringList argv)
@@ -324,9 +324,9 @@ void kenji::AOClient::cmdNoteCardClear(int argc, QStringList argv)
   Q_UNUSED(argv);
 
   AreaData *l_area = server->getAreaById(areaId());
-  if (!l_area->addNotecard(character(), QString()))
+  if (!l_area->addNotecard(m_character.toString(), QString()))
   {
-    sendServerMessageArea(character() + " erased their note card.");
+    sendServerMessageArea(m_character.toString() + " erased their note card.");
   }
 }
 

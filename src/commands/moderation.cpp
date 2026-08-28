@@ -159,7 +159,7 @@ void kenji::AOClient::cmdMods(int argc, QStringList argv)
       l_entries << "OOC name: " + l_client->name();
       l_entries << "ID: " + QString::number(l_client->clientId());
       l_entries << "Area: " + QString::number(l_client->areaId());
-      l_entries << "Character: " + l_client->character();
+      l_entries << "Character: " + l_client->character().toString();
       l_online_count++;
     }
   }
@@ -624,7 +624,7 @@ void kenji::AOClient::cmdAllowIniswap(int argc, QStringList argv)
   AreaData *l_area = server->getAreaById(areaId());
   l_area->toggleIniswap();
   QString state = l_area->iniswapAllowed() ? "allowed." : "disallowed.";
-  sendServerMessage("Iniswapping in this area is now " + state);
+  sendServerMessage("Off-list characters in this area are now " + state);
 }
 
 void kenji::AOClient::cmdPermitSaving(int argc, QStringList argv)

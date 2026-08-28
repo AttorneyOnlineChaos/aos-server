@@ -58,7 +58,7 @@ void kenji::AOClient::process(const theory::OocMessagePacket &packet)
     int l_cmd_argc = l_cmd_argv.length();
 
     handleCommand(l_command, l_cmd_argc, l_cmd_argv);
-    m_logger.logCMD((character() + " " + characterName().value_or(QString())), m_ipid, name(), l_command, l_cmd_argv, server->getAreaById(areaId())->name());
+    m_logger.logCMD((m_character.toString() + " " + characterName().value_or(QString())), m_ipid, name(), l_command, l_cmd_argv, server->getAreaById(areaId())->name());
     return;
   }
   else
@@ -68,5 +68,5 @@ void kenji::AOClient::process(const theory::OocMessagePacket &packet)
     l_broadcast.message = l_message;
     server->broadcastToArea(l_broadcast, areaId());
   }
-  m_logger.logOOC(server->getAreaById(areaId())->name(), m_ipid, name(), QString::number(clientId()), (character() + " " + characterName().value_or(QString())), l_message);
+  m_logger.logOOC(server->getAreaById(areaId())->name(), m_ipid, name(), QString::number(clientId()), (m_character.toString() + " " + characterName().value_or(QString())), l_message);
 }

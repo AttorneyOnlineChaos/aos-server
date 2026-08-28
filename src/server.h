@@ -121,23 +121,7 @@ public:
    *
    * @return A list of the available characters on the server to use.
    */
-  QStringList getCharacters();
-
-  /**
-   * @brief Returns the count of available characters on the server to use.
-   *
-   * @return The count of available characters on the server to use.
-   */
-  int getCharacterCount();
-
-  /**
-   * @brief Get the available character by index.
-   *
-   * @param f_chr_id The index of the character.
-   *
-   * @return The character if it exist, otherwise an empty stirng.
-   */
-  QString getCharacterById(theory::CharacterId f_chr_id);
+  QList<theory::CharacterId> getCharacters();
 
   /**
    * @brief Sends a packet to all clients in the server.
@@ -185,16 +169,6 @@ public:
    * @brief Sends the state of the global timer.
    */
   void shipGlobalTimer(theory::ClientId f_player_id);
-
-  /**
-   * @brief Returns the character's character ID (= their index in the character list).
-   *
-   * @param char_name The 'internal' name for the character whose character ID to look up. This is equivalent to
-   * the name of the directory of the character.
-   *
-   * @return The character ID if a character with that name exists in the character selection list, `-1` if not.
-   */
-  theory::CharacterId getCharID(const QString &char_name);
 
   /**
    * @brief Checks if an IP is in a subnet of the IPBanlist.
@@ -405,7 +379,7 @@ private:
   /**
    * @brief The characters available on the server to use.
    */
-  QStringList m_characters;
+  QList<theory::CharacterId> m_characters;
 
   /**
    * @brief The areas on the server.

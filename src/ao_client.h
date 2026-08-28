@@ -144,8 +144,8 @@ public:
   QString name() const;
   void setName(const QString &f_name);
 
-  QString character() const;
-  void setCharacter(const QString &f_character);
+  theory::CharacterId character() const;
+  void setCharacter(const theory::CharacterId &f_character);
 
   std::optional<QString> characterName() const;
   void setCharacterName(const std::optional<QString> &f_showname);
@@ -160,13 +160,6 @@ public:
    * @brief The IP address of the client.
    */
   QHostAddress m_remote_ip;
-
-  /**
-   * @brief The internal name of the character the client is iniswapped to.
-   *
-   * @note This will be the same as current_char if the client is not iniswapped.
-   */
-  QString m_current_iniswap;
 
   /**
    * @brief If using advanced authentication, this is the moderator name that the client has logged in with.
@@ -523,15 +516,6 @@ public:
 
   ///@}
 
-  /**
-   * @brief The client's character ID.
-   *
-   * @details A character ID is just the character's index in the server's character list.
-   *
-   * In general, the client assumes that this is a continuous block starting from 0.
-   */
-  theory::CharacterId m_char_id = theory::NoCharacterId;
-
 public Q_SLOTS:
   /**
    * @brief Disconnects the client.
@@ -557,7 +541,7 @@ public Q_SLOTS:
 
 Q_SIGNALS:
   void nameChanged(const QString &);
-  void characterChanged(const QString &);
+  void characterChanged(const theory::CharacterId &);
   void characterNameChanged(const std::optional<QString> &);
   void statusChanged(theory::PlayerStatus);
   void areaIdChanged(int);
@@ -602,12 +586,12 @@ private:
   /**
    * @brief The ID of the area the client is currently in.
    */
-  int m_current_area;
+  int m_current_area = theory::NoAreaId;
 
   /**
    * @brief The internal name of the character the client is currently using.
    */
-  QString m_current_char;
+  theory::CharacterId m_character = theory::NoCharacterId;
 
   /**
    * @brief A pointer to the Server, used for updating server variables that depend on the client (e.g. amount of players in an area).

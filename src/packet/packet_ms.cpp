@@ -2,8 +2,6 @@
 
 #include "area_data.h"
 #include "config_manager.h"
-#include "core/logging.h"
-#include "kenji_log.h"
 #include "medieval_parser.h"
 #include "server.h"
 
@@ -56,7 +54,7 @@ void kenji::AOClient::process(const theory::IcMessagePacket &packet)
 
   server->broadcastToArea(l_message, areaId());
 
-  m_logger.logIC(l_area->name(), m_ipid, name(), QString::number(clientId()), (character() + " " + characterName().value_or(QString())), m_last_message);
+  m_logger.logIC(l_area->name(), m_ipid, name(), QString::number(clientId()), (m_character.toString() + " " + characterName().value_or(QString())), m_last_message);
   l_area->updateLastICMessage(l_message);
 
   l_area->startMessageFloodguard(ConfigManager::messageFloodguard());
@@ -67,7 +65,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
 {
   // Welcome to the super cursed server-side IC chat validation hell
 
-  if (isSpectator() || character().isEmpty())
+  if (isSpectator())
   {
     // Spectators cannot use IC
     return std::nullopt;
@@ -99,24 +97,6 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
   case theory::DeskMod::PreAnimationOnlyExpanded:
     break;
   }
-
-  // char name
-  if (character().toLower() != packet.character.toLower())
-  {
-    // Selected char is different from supplied folder name
-    // This means the user is INI-swapped
-    QStringList l_character_split = packet.character.split(QRegularExpression("[/\\\\]"));
-    if (l_character_split.contains(".."))
-    {
-      return std::nullopt;
-    }
-    if (!l_area->iniswapAllowed() && !server->getCharacters().contains(l_character_split.at(0), Qt::CaseInsensitive))
-    {
-      return std::nullopt;
-    }
-    zDebug(log::protocol) << "INI swap detected from " << getIpid();
-  }
-  m_current_iniswap = packet.character;
 
   // emote
   m_emote = packet.emote;
@@ -221,7 +201,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
   }
 
   // char id
-  if (packet.characterId != m_char_id)
+  if (packet.character != m_character)
   {
     return std::nullopt;
   }
@@ -250,7 +230,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
   {
     l_incoming_showname = dezalgo(packet.characterName->trimmed());
   }
-  if (l_incoming_showname && !(l_incoming_showname.value() == character() || l_incoming_showname->isEmpty()) && !l_area->shownameAllowed())
+  if (l_incoming_showname && !(l_incoming_showname.value() == m_character.toString() || l_incoming_showname->isEmpty()) && !l_area->shownameAllowed())
   {
     sendServerMessage("Shownames are not allowed in this area!");
     return std::nullopt;
@@ -270,7 +250,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
   setCharacterName(l_incoming_showname);
 
   // pairing
-  m_pairing_with = packet.pair ? packet.pair->characterId : theory::NoCharacterId;
+  m_pairing_with = packet.pair ? packet.pair->character : theory::NoCharacterId;
   m_offset_x = packet.offsetX;
   m_offset_y = packet.offsetY;
 
@@ -284,9 +264,9 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
       {
         continue;
       }
-      if (l_client->m_pairing_with == m_char_id && m_pairing_with != m_char_id && l_client->m_char_id == m_pairing_with && l_client->m_pos == m_pos)
+      if (l_client->m_pairing_with == m_character && m_pairing_with != m_character && l_client->character() == m_pairing_with && l_client->m_pos == m_pos)
       {
-        l_message.pair->character = l_client->m_current_iniswap;
+        l_message.pair->character = l_client->character();
         l_message.pair->emote = l_client->m_emote;
         l_message.pair->offsetX = l_client->m_offset_x;
         l_message.pair->offsetY = l_client->m_offset_y;
@@ -316,7 +296,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
   }
 
   // additive
-  if (l_area->lastICMessage().characterId != m_char_id)
+  if (l_area->lastICMessage().character != m_character)
   {
     l_message.additive = false;
   }
@@ -329,7 +309,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
   QString client_name = name();
   if (client_name == "")
   {
-    client_name = character(); // fallback in case of empty ooc name
+    client_name = m_character.toString(); // fallback in case of empty ooc name
   }
   if ((l_area->testimonyRecording() == AreaData::TestimonyRecording::RECORDING || l_area->testimonyRecording() == AreaData::TestimonyRecording::ADD) && !l_message.message.isEmpty())
   {
@@ -421,7 +401,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
       }
     }
 
-    if (l_message.characterId == theory::NoCharacterId)
+    if (l_message.character == theory::NoCharacterId)
     {
       return std::nullopt;
     }

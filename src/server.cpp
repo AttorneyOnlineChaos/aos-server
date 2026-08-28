@@ -111,7 +111,17 @@ bool kenji::Server::start()
   connect(this, &Server::updateHTTPConfiguration, server_publisher.get(), &ServerPublisher::publishServer);
 
   // Get characters from config file
-  m_characters = ConfigManager::charlist();
+  const QStringList l_charlist = ConfigManager::charlist();
+  for (const QString &i_char_name : l_charlist)
+  {
+    const theory::CharacterId l_char_id = theory::CharacterId(i_char_name);
+    if (m_characters.contains(l_char_id))
+    {
+      zWarning(log::config) << "skipping unusable or duplicate character entry:" << i_char_name;
+      continue;
+    }
+    m_characters.append(l_char_id);
+  }
 
   // Get backgrounds from config file
   m_backgrounds = ConfigManager::backgrounds();
@@ -413,39 +423,9 @@ int kenji::Server::getPlayerCount()
   return m_player_count;
 }
 
-QStringList kenji::Server::getCharacters()
+QList<theory::CharacterId> kenji::Server::getCharacters()
 {
   return m_characters;
-}
-
-int kenji::Server::getCharacterCount()
-{
-  return m_characters.length();
-}
-
-QString kenji::Server::getCharacterById(theory::CharacterId f_chr_id)
-{
-  QString l_chr;
-
-  if (f_chr_id >= 0 && f_chr_id < m_characters.length())
-  {
-    l_chr = m_characters.at(f_chr_id);
-  }
-
-  return l_chr;
-}
-
-theory::CharacterId kenji::Server::getCharID(const QString &char_name)
-{
-  for (theory::CharacterId i = 0; i < m_characters.length(); i++)
-  {
-    if (m_characters[i].toLower() == char_name.toLower())
-    {
-      return i;
-    }
-  }
-
-  return theory::NoCharacterId; // character does not exist
 }
 
 QList<kenji::AreaData *> kenji::Server::getAreas()

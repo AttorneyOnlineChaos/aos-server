@@ -191,7 +191,7 @@ void kenji::AOClient::markExpired()
   m_session_timer->stop();
   setSessionStatus(SessionStatus::Expired);
 
-  server->getAreaById(areaId())->removeClient(server->getCharID(character()), clientId());
+  server->getAreaById(areaId())->removeClient(m_character, clientId());
 
   bool l_updateLocks = false;
 
@@ -301,19 +301,18 @@ void kenji::AOClient::changeArea(int new_area)
     return;
   }
 
-  if (character() != "")
+  if (m_character != theory::NoCharacterId)
   {
-    server->getAreaById(areaId())->changeCharacter(server->getCharID(character()), theory::NoCharacterId);
+    server->getAreaById(areaId())->changeCharacter(m_character, theory::NoCharacterId);
   }
-  server->getAreaById(areaId())->removeClient(m_char_id, clientId());
+  server->getAreaById(areaId())->removeClient(m_character, clientId());
   bool l_character_taken = false;
-  if (server->getAreaById(new_area)->charactersTaken().contains(server->getCharID(character())))
+  if (server->getAreaById(new_area)->charactersTaken().contains(m_character))
   {
-    setCharacter("");
-    m_char_id = theory::NoCharacterId;
+    setCharacter(theory::NoCharacterId);
     l_character_taken = true;
   }
-  server->getAreaById(new_area)->addClient(m_char_id, clientId());
+  server->getAreaById(new_area)->addClient(m_character, clientId());
   setAreaId(new_area);
   sendEvidenceList(server->getAreaById(new_area));
 
@@ -336,7 +335,7 @@ void kenji::AOClient::changeArea(int new_area)
   if (l_character_taken)
   {
     theory::CharacterAcceptedPacket l_accepted;
-    l_accepted.characterId = theory::NoCharacterId;
+    l_accepted.character = theory::NoCharacterId;
     shipPacket(l_accepted);
   }
   server->getAreaById(areaId())->shipTimers(clientId());
@@ -356,34 +355,38 @@ bool kenji::AOClient::changeCharacter(theory::CharacterId char_id)
 {
   AreaData *l_area = server->getAreaById(areaId());
 
-  if (char_id >= server->getCharacterCount())
+  if (char_id != theory::NoCharacterId)
   {
-    return false;
+    if (m_is_charcursed)
+    {
+      if (!m_charcurse_list.contains(char_id))
+      {
+        return false;
+      }
+    }
+    else if (!server->getCharacters().contains(char_id) && !l_area->iniswapAllowed())
+    {
+      return false;
+    }
   }
 
-  if (m_is_charcursed && !m_charcurse_list.contains(char_id))
-  {
-    return false;
-  }
+  bool l_successfulChange = l_area->changeCharacter(m_character, char_id);
 
-  bool l_successfulChange = l_area->changeCharacter(server->getCharID(character()), char_id);
-
-  if (char_id < 0)
+  if (char_id == theory::NoCharacterId)
   {
-    setCharacter("");
-    m_char_id = theory::NoCharacterId;
+    setCharacter(theory::NoCharacterId);
     theory::CharacterAcceptedPacket l_accepted;
-    l_accepted.characterId = theory::NoCharacterId;
+    l_accepted.character = theory::NoCharacterId;
     shipPacket(l_accepted);
+    return true;
   }
 
   if (l_successfulChange == true)
   {
-    QString l_char_selected = server->getCharacterById(char_id);
-    setCharacter(l_char_selected);
+    setCharacter(char_id);
     m_pos = "";
     theory::CharacterAcceptedPacket l_accepted;
-    l_accepted.characterId = m_is_charcursed ? m_charcurse_list.indexOf(char_id) : char_id;
+    l_accepted.character = char_id;
     shipPacket(l_accepted);
     return true;
   }
@@ -618,17 +621,17 @@ void kenji::AOClient::setAreaId(const int f_area_id)
   }
 }
 
-QString kenji::AOClient::character() const
+theory::CharacterId kenji::AOClient::character() const
 {
-  return m_current_char;
+  return m_character;
 }
 
-void kenji::AOClient::setCharacter(const QString &f_character)
+void kenji::AOClient::setCharacter(const theory::CharacterId &f_character)
 {
-  if (f_character != m_current_char)
+  if (f_character != m_character)
   {
-    m_current_char = f_character;
-    Q_EMIT characterChanged(m_current_char);
+    m_character = f_character;
+    Q_EMIT characterChanged(m_character);
   }
 }
 
@@ -662,7 +665,7 @@ void kenji::AOClient::setStatus(theory::PlayerStatus f_status)
 
 bool kenji::AOClient::isSpectator() const
 {
-  return m_char_id == theory::NoCharacterId;
+  return m_character == theory::NoCharacterId;
 }
 
 void kenji::AOClient::onAfkTimeout()
@@ -681,8 +684,6 @@ kenji::AOClient::AOClient(Server *p_server, ULogger &logger, const theory::Share
     , m_music_manager(p_manager)
     , m_last_wtce_time(0)
     , m_id(user_id)
-    , m_current_area(0)
-    , m_current_char("")
     , server(p_server)
     , m_logger(logger)
     , rate_limit_tick(0)

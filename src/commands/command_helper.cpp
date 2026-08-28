@@ -40,8 +40,8 @@ QStringList kenji::AOClient::buildAreaList(int area_idx)
   {
     if (l_client->areaId() == area_idx)
     {
-      QString char_entry = "[" + QString::number(l_client->clientId()) + "] " + l_client->character();
-      if (l_client->character() == "")
+      QString char_entry = "[" + QString::number(l_client->clientId()) + "] " + l_client->character().toString();
+      if (l_client->character() == theory::NoCharacterId)
       {
         char_entry += "Spectator";
       }

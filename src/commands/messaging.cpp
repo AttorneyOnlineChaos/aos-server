@@ -96,17 +96,13 @@ void kenji::AOClient::cmdSwitch(int argc, QStringList argv)
 {
   Q_UNUSED(argc);
 
-  theory::CharacterId l_selected_char_id = server->getCharID(argv.join(" "));
+  theory::CharacterId l_selected_char_id = theory::CharacterId(argv.join(" "));
   if (l_selected_char_id == theory::NoCharacterId)
   {
     sendServerMessage("That does not look like a valid character.");
     return;
   }
-  if (changeCharacter(l_selected_char_id))
-  {
-    m_char_id = l_selected_char_id;
-  }
-  else
+  if (!changeCharacter(l_selected_char_id))
   {
     sendServerMessage("The character you picked is either taken or invalid.");
   }
@@ -118,20 +114,17 @@ void kenji::AOClient::cmdRandomChar(int argc, QStringList argv)
   Q_UNUSED(argv);
 
   AreaData *l_area = server->getAreaById(areaId());
-  theory::CharacterId l_selected_char_id;
-  bool l_taken = true;
-  while (l_taken)
+  QList<theory::CharacterId> l_available = server->getCharacters();
+  for (const theory::CharacterId &l_taken_char : l_area->charactersTaken())
   {
-    l_selected_char_id = genRand(0, server->getCharacterCount() - 1);
-    if (!l_area->charactersTaken().contains(l_selected_char_id))
-    {
-      l_taken = false;
-    }
+    l_available.removeOne(l_taken_char);
   }
-  if (changeCharacter(l_selected_char_id))
+  if (l_available.isEmpty())
   {
-    m_char_id = l_selected_char_id;
+    sendServerMessage("There are no available characters.");
+    return;
   }
+  changeCharacter(l_available.at(genRand(0, l_available.size() - 1)));
 }
 
 void kenji::AOClient::cmdToggleGlobal(int argc, QStringList argv)
@@ -526,28 +519,34 @@ void kenji::AOClient::cmdCharCurse(int argc, QStringList argv)
 
   if (argc == 1)
   {
-    l_target->m_charcurse_list.append(server->getCharID(l_target->character()));
+    if (l_target->isSpectator())
+    {
+      sendServerMessage("That player is a spectator!");
+      return;
+    }
+    l_target->m_charcurse_list.append(l_target->character());
   }
   else
   {
     argv.removeFirst();
     QStringList l_char_names = argv.join(" ").split(",");
 
-    l_target->m_charcurse_list.clear();
+    QList<theory::CharacterId> l_curse_list;
     for (const QString &l_char_name : qAsConst(l_char_names))
     {
-      theory::CharacterId char_id = server->getCharID(l_char_name);
-      if (char_id == theory::NoCharacterId)
+      theory::CharacterId char_id = theory::CharacterId(l_char_name);
+      if (!server->getCharacters().contains(char_id))
       {
         sendServerMessage("Could not find character: " + l_char_name);
         return;
       }
-      l_target->m_charcurse_list.append(char_id);
+      l_curse_list.append(char_id);
     }
+    l_target->m_charcurse_list = l_curse_list;
   }
 
   // Kick back to char select screen
-  if (!l_target->m_charcurse_list.contains(server->getCharID(l_target->character())))
+  if (!l_target->m_charcurse_list.contains(l_target->character()))
   {
     l_target->changeCharacter(theory::NoCharacterId);
   }

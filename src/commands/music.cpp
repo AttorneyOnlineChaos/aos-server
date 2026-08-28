@@ -43,7 +43,7 @@ void kenji::AOClient::cmdPlay(int argc, QStringList argv)
   l_area->setCurrentMusic(l_final_track);
   theory::MusicChangedPacket l_music_change;
   l_music_change.track = l_final_track;
-  l_music_change.characterId = server->getCharID(character());
+  l_music_change.character = m_character;
   l_music_change.characterName = characterName();
   l_music_change.channel = theory::MusicChannel::Music;
   l_music_change.loop = true;
@@ -80,7 +80,7 @@ void kenji::AOClient::cmdPlayAmbience(int argc, QStringList argv)
   l_area->setAmbience(l_final_track);
   theory::MusicChangedPacket l_music_change;
   l_music_change.track = l_final_track;
-  l_music_change.characterId = theory::NoCharacterId;
+  l_music_change.character = theory::NoCharacterId;
   l_music_change.characterName = characterName();
   l_music_change.channel = theory::MusicChannel::Ambient;
   l_music_change.loop = true;
@@ -276,7 +276,7 @@ void kenji::AOClient::cmdJukeboxSkip(int argc, QStringList argv)
   Q_UNUSED(argc);
   Q_UNUSED(argv);
 
-  QString l_name = characterName().value_or(character());
+  QString l_name = characterName().value_or(m_character.toString());
 
   AreaData *l_area = server->getAreaById(areaId());
 

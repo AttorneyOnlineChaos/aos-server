@@ -57,7 +57,7 @@ void kenji::AOClient::beginSession()
   l_welcome.clientId = clientId();
   shipPacket(l_welcome);
 
-  server->getAreaById(areaId())->addClient(-1, clientId());
+  server->getAreaById(areaId())->addClient(theory::NoCharacterId, clientId());
 }
 
 void kenji::AOClient::resumeSession()
@@ -77,10 +77,7 @@ void kenji::AOClient::sendCharacterList()
 
   if (m_is_charcursed)
   {
-    for (theory::CharacterId l_char_id : qAsConst(m_charcurse_list))
-    {
-      l_character_list.characters.append(server->getCharacterById(l_char_id));
-    }
+    l_character_list.characters = m_charcurse_list;
   }
   else
   {
@@ -93,6 +90,6 @@ void kenji::AOClient::sendCharacterList()
 void kenji::AOClient::sendCharacterSelection()
 {
   theory::CharacterAcceptedPacket l_accepted;
-  l_accepted.characterId = m_is_charcursed ? m_charcurse_list.indexOf(m_char_id) : m_char_id;
+  l_accepted.character = m_character;
   shipPacket(l_accepted);
 }
