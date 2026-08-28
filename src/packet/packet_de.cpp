@@ -12,10 +12,10 @@ void kenji::AOClient::process(const theory::DeleteEvidencePacket &packet)
     return;
   }
 
-  int l_idx = packet.evidenceId;
-  if (l_idx < l_area->evidence().size() && l_idx >= 0)
+  theory::EvidenceId l_evi_id = packet.evidenceId;
+  if (l_evi_id < l_area->evidence().size() && l_evi_id >= 0)
   {
-    l_area->deleteEvidence(l_idx);
+    l_area->deleteEvidence(l_evi_id);
   }
   sendEvidenceList(l_area);
 }

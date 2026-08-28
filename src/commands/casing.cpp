@@ -84,7 +84,7 @@ void kenji::AOClient::cmdEvidence_Swap(int argc, QStringList argv)
   }
 
   bool ok, ok2;
-  int l_ev_id1 = argv[0].toInt(&ok), l_ev_id2 = argv[1].toInt(&ok2);
+  theory::EvidenceId l_ev_id1 = argv[0].toInt(&ok), l_ev_id2 = argv[1].toInt(&ok2);
 
   if ((!ok || !ok2))
   {

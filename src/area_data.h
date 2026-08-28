@@ -381,7 +381,7 @@ public:
    *
    * @param f_eviId1, f_eviId2 The indices of the pieces of evidence to swap.
    */
-  void swapEvidence(int f_eviId1, int f_eviId2);
+  void swapEvidence(theory::EvidenceId f_eviId1, theory::EvidenceId f_eviId2);
 
   /**
    * @brief Appends a piece of evidence to the list of evidence.
@@ -395,7 +395,7 @@ public:
    *
    * @param f_eviId The ID of the evidence to delete.
    */
-  void deleteEvidence(int f_eviId);
+  void deleteEvidence(theory::EvidenceId f_eviId);
 
   /**
    * @brief Replaces a piece of evidence at a given position with the one supplied.
@@ -403,14 +403,14 @@ public:
    * @param f_eviId The ID of the evidence to replace.
    * @param f_newEvi_r The new piece of evidence that will replace the aforementioned one.
    */
-  void replaceEvidence(int f_eviId, const Evidence &f_newEvi_r);
+  void replaceEvidence(theory::EvidenceId f_eviId, const Evidence &f_newEvi_r);
 
   /**
    * @brief Changes the owner of evidence to "all" when it's presented.
    *
    * @param f_eviId The ID of the evidence to change owner for.
    */
-  void setEvidenceOwnerToAll(int f_eviId);
+  void setEvidenceOwnerToAll(theory::EvidenceId f_eviId);
 
   /**
    * @brief Gets the visible index by real evidence index for a specific client position.
@@ -420,7 +420,7 @@ public:
    * @param f_isCM Whether the client is a Case Manager.
    * @return The visible index (1-based) as seen by the client, or 0 if not visible.
    */
-  int getVisibleIndexByEvidenceIndex(int f_evidenceIndex, const QString &f_clientPos, bool f_isCM) const;
+  int getVisibleIndexByEvidenceIndex(theory::EvidenceId f_evidenceIndex, const QString &f_clientPos, bool f_isCM) const;
 
   /**
    * @brief Returns the status of the area.

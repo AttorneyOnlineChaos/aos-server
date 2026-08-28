@@ -14,7 +14,7 @@ void kenji::AOClient::process(const theory::EditEvidencePacket &packet)
     return;
   }
 
-  int l_evi_id = packet.evidenceId;
+  theory::EvidenceId l_evi_id = packet.evidenceId;
   if (l_evi_id >= l_area->evidence().length() || l_evi_id < 0)
   {
     return;

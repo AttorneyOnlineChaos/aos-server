@@ -303,7 +303,7 @@ QList<kenji::AreaData::Evidence> kenji::AreaData::evidence() const
   return m_evidence;
 }
 
-void kenji::AreaData::swapEvidence(int f_eviId1, int f_eviId2)
+void kenji::AreaData::swapEvidence(theory::EvidenceId f_eviId1, theory::EvidenceId f_eviId2)
 {
   m_evidence.swapItemsAt(f_eviId1, f_eviId2);
 }
@@ -313,17 +313,17 @@ void kenji::AreaData::appendEvidence(const AreaData::Evidence &f_evi_r)
   m_evidence.append(f_evi_r);
 }
 
-void kenji::AreaData::deleteEvidence(int f_eviId)
+void kenji::AreaData::deleteEvidence(theory::EvidenceId f_eviId)
 {
   m_evidence.removeAt(f_eviId);
 }
 
-void kenji::AreaData::replaceEvidence(int f_eviId, const AreaData::Evidence &f_newEvi_r)
+void kenji::AreaData::replaceEvidence(theory::EvidenceId f_eviId, const AreaData::Evidence &f_newEvi_r)
 {
   m_evidence.replace(f_eviId, f_newEvi_r);
 }
 
-void kenji::AreaData::setEvidenceOwnerToAll(int f_eviId)
+void kenji::AreaData::setEvidenceOwnerToAll(theory::EvidenceId f_eviId)
 {
   if (f_eviId < 0 || f_eviId >= m_evidence.size())
   {
@@ -794,7 +794,7 @@ void kenji::AreaData::allowMessage()
   m_can_send_ic_messages = true;
 }
 
-int kenji::AreaData::getVisibleIndexByEvidenceIndex(int f_evidenceIndex, const QString &f_clientPos, bool f_isCM) const
+int kenji::AreaData::getVisibleIndexByEvidenceIndex(theory::EvidenceId f_evidenceIndex, const QString &f_clientPos, bool f_isCM) const
 {
   if (f_evidenceIndex < 0 || f_evidenceIndex >= m_evidence.size())
   {
