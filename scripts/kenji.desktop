@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=kenji
+Exec=kenji
+Icon=kenji
+Terminal=true
+Categories=Game;Network;
