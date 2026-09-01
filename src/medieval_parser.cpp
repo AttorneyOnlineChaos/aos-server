@@ -1,7 +1,7 @@
 #include "medieval_parser.h"
 
 #include "core/logging.h"
-#include "kenji_log.h"
+#include "kenji_defs.h"
 
 #include <QFile>
 #include <QJsonArray>

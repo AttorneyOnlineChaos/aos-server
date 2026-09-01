@@ -1,4 +1,4 @@
-#include "kenji_log.h"
+#include "kenji_defs.h"
 
 Q_LOGGING_CATEGORY(kenji::log::main, "kenji.main")
 Q_LOGGING_CATEGORY(kenji::log::config, "kenji.config")

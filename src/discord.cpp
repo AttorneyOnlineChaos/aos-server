@@ -2,7 +2,7 @@
 
 #include "config_manager.h"
 #include "core/logging.h"
-#include "kenji_log.h"
+#include "kenji_defs.h"
 
 kenji::Discord::Discord(QObject *parent)
     : QObject(parent)

@@ -1,7 +1,7 @@
 #include "acl_roles_handler.h"
 
 #include "core/logging.h"
-#include "kenji_log.h"
+#include "kenji_defs.h"
 
 #include <QDebug>
 #include <QSettings>

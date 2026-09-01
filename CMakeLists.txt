@@ -46,10 +46,10 @@ qt_add_library(kenji STATIC
   src/packet/packet_zz.cpp
   src/acl_roles_handler.cpp
   src/acl_roles_handler.h
+  src/kenji_defs.cpp
+  src/kenji_defs.h
   src/kenji_info.cpp
   src/kenji_info.h
-  src/kenji_log.cpp
-  src/kenji_log.h
   src/ao_client.cpp
   src/ao_client.h
   src/ao_client_registry.cpp
