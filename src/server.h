@@ -196,6 +196,8 @@ public:
    */
   AreaData *getAreaById(theory::AreaId f_area_id);
 
+  AreaData *defaultArea() const;
+
   /**
    * @brief Getter for an area specific buffer from the logger.
    */

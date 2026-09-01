@@ -51,6 +51,11 @@ void kenji::AOClient::shipSnapshot()
 
 void kenji::AOClient::beginSession()
 {
+  if (server->getAreaById(areaId()) == nullptr)
+  {
+    setAreaId(server->defaultArea()->index());
+  }
+
   shipSnapshot();
 
   theory::WelcomePacket l_welcome;

@@ -450,6 +450,11 @@ kenji::AreaData *kenji::Server::getAreaById(theory::AreaId f_area_id)
   return l_area;
 }
 
+kenji::AreaData *kenji::Server::defaultArea() const
+{
+  return m_areas.first();
+}
+
 QQueue<QString> kenji::Server::getAreaBuffer(const QString &f_areaName)
 {
   return logger->buffer(f_areaName);
