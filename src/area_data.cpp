@@ -5,12 +5,11 @@
 #include "music_manager.h"
 #include "protocol/packets/music_packets.h"
 
-#include <QRegularExpression>
-
 #include <algorithm>
 
-kenji::AreaData::AreaData(const QString &p_name, theory::AreaId p_index, MusicManager *p_music_manager, Broadcaster &p_broadcaster)
-    : m_index(p_index)
+kenji::AreaData::AreaData(const QString &p_name, theory::AreaId p_index, theory::InventoryId p_inventory_id, MusicManager *p_music_manager, Broadcaster &p_broadcaster)
+    : id(p_index)
+    , inventoryId(p_inventory_id)
     , m_music_manager(p_music_manager)
     , m_broadcaster{p_broadcaster}
     , m_playerCount(0)
@@ -35,14 +34,13 @@ kenji::AreaData::AreaData(const QString &p_name, theory::AreaId p_index, MusicMa
   {
     m_name = "Unnamed Area";
   }
-  m_display_name = "[" + QString::number(m_index) + "] " + m_name;
+  m_display_name = "[" + QString::number(id) + "] " + m_name;
   QSettings *areas_ini = ConfigManager::areaData();
   areas_ini->beginGroup(p_name);
   m_background = areas_ini->value("background", "gs4").toString();
   m_isProtected = areas_ini->value("protected_area", "false").toBool();
   m_iniswapAllowed = areas_ini->value("iniswap_allowed", "true").toBool();
   m_bgLocked = areas_ini->value("bg_locked", "false").toBool();
-  m_eviMod = QVariant(areas_ini->value("evidence_mod", "FFA").toString().toUpper()).value<EvidenceMod>();
   m_blankpostingAllowed = areas_ini->value("blankposting_allowed", "true").toBool();
   m_area_message = areas_ini->value("area_message").toString();
   m_send_area_message = areas_ini->value("send_area_message_on_join", false).toBool();
@@ -61,11 +59,11 @@ kenji::AreaData::AreaData(const QString &p_name, theory::AreaId p_index, MusicMa
     m_timers.insert(i, l_timer);
 
     connect(l_timer, &Timer::stateChanged, this, [this, l_timer] {
-      m_broadcaster.broadcastToArea(makeTimerPacket(*l_timer, theory::TimerPacket::State), m_index);
-      m_broadcaster.broadcastToArea(makeTimerPacket(*l_timer, theory::TimerPacket::Tick), m_index);
+      m_broadcaster.broadcastToArea(makeTimerPacket(*l_timer, theory::TimerPacket::State), id);
+      m_broadcaster.broadcastToArea(makeTimerPacket(*l_timer, theory::TimerPacket::Tick), id);
     });
 
-    connect(l_timer, &Timer::visibilityChanged, this, [this, l_timer] { m_broadcaster.broadcastToArea(makeTimerPacket(*l_timer, theory::TimerPacket::Visibility), m_index); });
+    connect(l_timer, &Timer::visibilityChanged, this, [this, l_timer] { m_broadcaster.broadcastToArea(makeTimerPacket(*l_timer, theory::TimerPacket::Visibility), id); });
   }
   m_jukebox_timer = new QTimer();
   connect(m_jukebox_timer, &QTimer::timeout, this, &AreaData::switchJukeboxSong);
@@ -104,7 +102,7 @@ void kenji::AreaData::addClient(theory::CharacterId f_charId, theory::PlayerId f
     m_charactersTaken.append(f_charId);
   }
   m_joined_ids.append(f_userId);
-  Q_EMIT userJoinedArea(m_index, f_userId);
+  Q_EMIT userJoinedArea(id, f_userId);
   // Send out ambience as well.
   theory::MusicChangedPacket l_ambience;
   l_ambience.track = m_currentAmbience;
@@ -129,16 +127,21 @@ void kenji::AreaData::addOwner(theory::PlayerId f_clientId)
 {
   m_owners.append(f_clientId);
   m_invited.append(f_clientId);
+  Q_EMIT ownersChanged();
 }
 
 bool kenji::AreaData::removeOwner(theory::PlayerId f_clientId)
 {
-  m_owners.removeAll(f_clientId);
+  const bool l_removed = m_owners.removeAll(f_clientId) > 0;
   m_invited.removeAll(f_clientId);
+  if (l_removed)
+  {
+    Q_EMIT ownersChanged();
+  }
 
   if (m_owners.isEmpty() && m_locked != theory::AreaLockStatus::Unlocked)
   {
-    m_locked = theory::AreaLockStatus::Unlocked;
+    unlock();
     return true;
   }
 
@@ -183,16 +186,19 @@ bool kenji::AreaData::isPlayEnabled() const
 void kenji::AreaData::lock()
 {
   m_locked = theory::AreaLockStatus::Locked;
+  Q_EMIT lockStatusChanged();
 }
 
 void kenji::AreaData::unlock()
 {
   m_locked = theory::AreaLockStatus::Unlocked;
+  Q_EMIT lockStatusChanged();
 }
 
 void kenji::AreaData::spectatable()
 {
   m_locked = theory::AreaLockStatus::Spectatable;
+  Q_EMIT lockStatusChanged();
 }
 
 bool kenji::AreaData::invite(theory::PlayerId f_clientId)
@@ -250,18 +256,13 @@ void kenji::AreaData::synchronize()
     {
       continue;
     }
-    m_broadcaster.broadcastToArea(makeTimerPacket(*l_timer, theory::TimerPacket::Tick), m_index);
+    m_broadcaster.broadcastToArea(makeTimerPacket(*l_timer, theory::TimerPacket::Tick), id);
   }
 }
 
 QString kenji::AreaData::name() const
 {
   return m_name;
-}
-
-theory::AreaId kenji::AreaData::index() const
-{
-  return m_index;
 }
 
 QString kenji::AreaData::displayName() const
@@ -299,59 +300,6 @@ bool kenji::AreaData::changeCharacter(theory::CharacterId f_from, theory::Charac
   return false;
 }
 
-QList<kenji::AreaData::Evidence> kenji::AreaData::evidence() const
-{
-  return m_evidence;
-}
-
-void kenji::AreaData::swapEvidence(theory::EvidenceId f_eviId1, theory::EvidenceId f_eviId2)
-{
-  m_evidence.swapItemsAt(f_eviId1, f_eviId2);
-}
-
-void kenji::AreaData::appendEvidence(const AreaData::Evidence &f_evi_r)
-{
-  m_evidence.append(f_evi_r);
-}
-
-void kenji::AreaData::deleteEvidence(theory::EvidenceId f_eviId)
-{
-  m_evidence.removeAt(f_eviId);
-}
-
-void kenji::AreaData::replaceEvidence(theory::EvidenceId f_eviId, const AreaData::Evidence &f_newEvi_r)
-{
-  m_evidence.replace(f_eviId, f_newEvi_r);
-}
-
-void kenji::AreaData::setEvidenceOwnerToAll(theory::EvidenceId f_eviId)
-{
-  if (f_eviId < 0 || f_eviId >= m_evidence.size())
-  {
-    return;
-  }
-
-  Evidence &evidence = m_evidence[f_eviId];
-  QString description = evidence.description;
-
-  // Search for owner tag in description
-  static const QRegularExpression ownerRegex("<owner=(.*?)>");
-  QRegularExpressionMatch match = ownerRegex.match(description);
-
-  if (match.hasMatch())
-  {
-    // Replace existing owner tag with <owner=all>
-    description.replace(ownerRegex, "<owner=all>");
-  }
-  else
-  {
-    // If no owner tag exists, add <owner=all> at the beginning
-    description = "<owner=all>\n" + description;
-  }
-
-  evidence.description = description;
-}
-
 theory::AreaStatus kenji::AreaData::status() const
 {
   return m_status;
@@ -360,6 +308,7 @@ theory::AreaStatus kenji::AreaData::status() const
 void kenji::AreaData::changeStatus(theory::AreaStatus status)
 {
   m_status = status;
+  Q_EMIT statusChanged();
 }
 
 QList<theory::PlayerId> kenji::AreaData::invited() const
@@ -402,11 +351,6 @@ void kenji::AreaData::startMessageFloodguard(int f_duration)
 void kenji::AreaData::toggleMusic()
 {
   m_toggleMusic = !m_toggleMusic;
-}
-
-void kenji::AreaData::setEviMod(const EvidenceMod &f_eviMod_r)
-{
-  m_eviMod = f_eviMod_r;
 }
 
 void kenji::AreaData::setTestimonyRecording(const TestimonyRecording &f_testimonyRecording_r)
@@ -524,11 +468,6 @@ kenji::AreaData::TestimonyRecording kenji::AreaData::testimonyRecording() const
   return m_testimonyRecording;
 }
 
-kenji::AreaData::EvidenceMod kenji::AreaData::eviMod() const
-{
-  return m_eviMod;
-}
-
 bool kenji::AreaData::addNotecard(const QString &f_owner_r, const QString &f_notecard_r)
 {
   m_notecards[f_owner_r] = f_notecard_r;
@@ -573,10 +512,21 @@ int kenji::AreaData::currentMusicSample() const
   return m_currentMusicSample;
 }
 
-void kenji::AreaData::setCurrentMusic(const std::optional<QString> &f_current_song, int f_sample)
+void kenji::AreaData::setMusic(const std::optional<QString> &f_current_song, int f_sample)
 {
+  if (!f_current_song)
+  {
+    clearMusic();
+    return;
+  }
   m_currentMusic = f_current_song;
   m_currentMusicSample = f_sample;
+}
+
+void kenji::AreaData::clearMusic()
+{
+  m_currentMusic.reset();
+  m_currentMusicSample = 0;
 }
 
 int kenji::AreaData::proHP() const
@@ -731,7 +681,7 @@ QString kenji::AreaData::addJukeboxSong(const QString &f_song)
   if (!m_jukebox_queue.contains(f_song))
   {
     // Retrieve song information.
-    const auto l_song = m_music_manager->findTrack(f_song, index());
+    const auto l_song = m_music_manager->findTrack(f_song, id);
 
     if (l_song && l_song->length > 0)
     {
@@ -740,9 +690,9 @@ QString kenji::AreaData::addJukeboxSong(const QString &f_song)
         theory::MusicChangedPacket l_music_change;
         l_music_change.track = l_song->fileName;
         l_music_change.channel = theory::MusicChannel::Music;
-        m_broadcaster.broadcastToArea(l_music_change, index());
+        m_broadcaster.broadcastToArea(l_music_change, id);
         m_jukebox_timer->start(l_song->length * 1000);
-        setCurrentMusic(f_song, 0);
+        setMusic(f_song, 0);
       }
       m_jukebox_queue.append(f_song);
       return "Song added to Jukebox.";
@@ -776,7 +726,7 @@ void kenji::AreaData::switchJukeboxSong()
     m_jukebox_queue.squeeze();
   }
 
-  const auto l_song = m_music_manager->findTrack(l_song_name, index());
+  const auto l_song = m_music_manager->findTrack(l_song_name, id);
 
   theory::MusicChangedPacket l_music_change;
   l_music_change.channel = theory::MusicChannel::Music;
@@ -784,58 +734,19 @@ void kenji::AreaData::switchJukeboxSong()
   {
     l_music_change.track = l_song->fileName;
   }
-  m_broadcaster.broadcastToArea(l_music_change, m_index);
+  m_broadcaster.broadcastToArea(l_music_change, id);
 
   if (l_song && l_song->length > 0)
   {
     m_jukebox_timer->start(l_song->length * 1000);
-    setCurrentMusic(l_song->fileName, 0);
+    setMusic(l_song->fileName, 0);
     return;
   }
 
-  setCurrentMusic(std::nullopt, 0);
+  clearMusic();
 }
 
 void kenji::AreaData::allowMessage()
 {
   m_can_send_ic_messages = true;
-}
-
-int kenji::AreaData::getVisibleIndexByEvidenceIndex(theory::EvidenceId f_evidenceIndex, const QString &f_clientPos, bool f_isCM) const
-{
-  if (f_evidenceIndex < 0 || f_evidenceIndex >= m_evidence.size())
-  {
-    return 0; // Invalid index or not visible
-  }
-
-  int visibleCount = 0;
-  for (int i = 0; i < m_evidence.size(); ++i)
-  {
-    const Evidence &evidence = m_evidence[i];
-
-    // Apply the same filtering logic as in updateEvidenceList
-    if (!f_isCM && m_eviMod == EvidenceMod::HIDDEN_CM)
-    {
-      static const QRegularExpression ownerRegex("<owner=(.*?)>");
-      QRegularExpressionMatch match = ownerRegex.match(evidence.description);
-      if (match.hasMatch())
-      {
-        QStringList owners = match.captured(1).split(",");
-        if (!owners.contains("all", Qt::CaseSensitivity::CaseInsensitive) && !owners.contains(f_clientPos, Qt::CaseSensitivity::CaseInsensitive))
-        {
-          continue; // This evidence is not visible to the client
-        }
-      }
-      // no match = show it to all
-    }
-
-    // This evidence is visible, increment counter
-    ++visibleCount;
-    if (i == f_evidenceIndex)
-    {
-      return visibleCount; // Return the visible index (1-based)
-    }
-  }
-
-  return 0; // Evidence not visible to this client
 }

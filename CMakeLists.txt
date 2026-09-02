@@ -26,6 +26,10 @@ qt_add_library(kenji STATIC
   src/commands/moderation.cpp
   src/commands/music.cpp
   src/commands/roleplay.cpp
+  src/inventory/area_inventory_handle.cpp
+  src/inventory/area_inventory_handle.h
+  src/inventory/client_inventory_handle.cpp
+  src/inventory/client_inventory_handle.h
   src/logger/u_logger.cpp
   src/logger/u_logger.h
   src/logger/writer_full.cpp
@@ -34,14 +38,14 @@ qt_add_library(kenji STATIC
   src/logger/writer_modcall.h
   src/packet/packet_cc.cpp
   src/packet/packet_ct.cpp
-  src/packet/packet_de.cpp
-  src/packet/packet_ee.cpp
+  src/packet/packet_eit.cpp
+  src/packet/packet_er.cpp
+  src/packet/packet_eu.cpp
   src/packet/packet_hi.cpp
   src/packet/packet_hp.cpp
   src/packet/packet_ma.cpp
   src/packet/packet_mc.cpp
   src/packet/packet_ms.cpp
-  src/packet/packet_pe.cpp
   src/packet/packet_rt.cpp
   src/packet/packet_zz.cpp
   src/acl_roles_handler.cpp
@@ -57,6 +61,8 @@ qt_add_library(kenji STATIC
   src/area_data.cpp
   src/area_data.h
   src/broadcaster.h
+  src/client_game_observer.cpp
+  src/client_game_observer.h
   src/command_extension.cpp
   src/command_extension.h
   src/command_utils.cpp
@@ -73,6 +79,9 @@ qt_add_library(kenji STATIC
   src/db_manager.h
   src/discord.cpp
   src/discord.h
+  src/inventory_handle.h
+  src/inventory_registry.cpp
+  src/inventory_registry.h
   src/join_floodguard.cpp
   src/join_floodguard.h
   src/medieval_parser.cpp
@@ -80,8 +89,6 @@ qt_add_library(kenji STATIC
   src/music_manager.cpp
   src/music_manager.h
   src/packets.cpp
-  src/player_state_observer.cpp
-  src/player_state_observer.h
   src/server.cpp
   src/server.h
   src/server_publisher.cpp

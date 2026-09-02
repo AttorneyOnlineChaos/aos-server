@@ -56,7 +56,6 @@ const QMap<QString, kenji::AOClient::CommandInfo> kenji::AOClient::COMMANDS{
     {"forcepos", {{ACLRole::CM}, 2, &AOClient::cmdForcePos}},
     {"currentmusic", {{ACLRole::NONE}, 0, &AOClient::cmdCurrentMusic}},
     {"pm", {{ACLRole::NONE}, 2, &AOClient::cmdPM}},
-    {"evidence_mod", {{ACLRole::EVI_MOD}, 1, &AOClient::cmdEvidenceMod}},
     {"motd", {{ACLRole::NONE}, 0, &AOClient::cmdMOTD}},
     {"set_motd", {{ACLRole::MOTD}, 1, &AOClient::cmdSetMOTD}},
     {"announce", {{ACLRole::ANNOUNCE}, 1, &AOClient::cmdAnnounce}},
@@ -67,8 +66,6 @@ const QMap<QString, kenji::AOClient::CommandInfo> kenji::AOClient::COMMANDS{
     {"bans", {{ACLRole::BAN}, 0, &AOClient::cmdBans}},
     {"unban", {{ACLRole::BAN}, 1, &AOClient::cmdUnBan}},
     {"subtheme", {{ACLRole::CM}, 1, &AOClient::cmdSubTheme}},
-    {"about", {{ACLRole::NONE}, 0, &AOClient::cmdAbout}},
-    {"evidence_swap", {{ACLRole::CM}, 2, &AOClient::cmdEvidence_Swap}},
     {"notecard", {{ACLRole::NONE}, 1, &AOClient::cmdNoteCard}},
     {"notecard_reveal", {{ACLRole::CM}, 0, &AOClient::cmdNoteCardReveal}},
     {"notecard_clear", {{ACLRole::NONE}, 0, &AOClient::cmdNoteCardClear}},
@@ -76,6 +73,7 @@ const QMap<QString, kenji::AOClient::CommandInfo> kenji::AOClient::COMMANDS{
     {"lm", {{ACLRole::MODCHAT}, 1, &AOClient::cmdLM}},
     {"judgelog", {{ACLRole::CM}, 0, &AOClient::cmdJudgeLog}},
     {"allow_blankposting", {{ACLRole::MODCHAT}, 0, &AOClient::cmdAllowBlankposting}},
+    {"toggle_inventory", {{ACLRole::MODCHAT}, 0, &AOClient::cmdToggleInventory}},
     {"gimp", {{ACLRole::MUTE}, 1, &AOClient::cmdGimp}},
     {"ungimp", {{ACLRole::MUTE}, 1, &AOClient::cmdUnGimp}},
     {"baninfo", {{ACLRole::BAN}, 1, &AOClient::cmdBanInfo}},
@@ -191,26 +189,18 @@ void kenji::AOClient::markExpired()
   m_session_timer->stop();
   setSessionStatus(SessionStatus::Expired);
 
-  server->getAreaById(areaId())->removeClient(m_character, playerId());
-
-  bool l_updateLocks = false;
+  server->getAreaById(areaId())->removeClient(m_character, id);
 
   const QList<AreaData *> l_areas = server->getAreas();
   for (AreaData *l_area : l_areas)
   {
-    if (l_area->invited().contains(m_id))
+    if (l_area->invited().contains(id))
     {
-      l_area->uninvite(m_id);
+      l_area->uninvite(id);
     }
 
-    l_updateLocks = l_updateLocks || l_area->removeOwner(playerId());
+    l_area->removeOwner(id);
   }
-
-  if (l_updateLocks)
-  {
-    arup(theory::AreaUpdatePacket::Locked, true);
-  }
-  arup(theory::AreaUpdatePacket::Ownership, true);
 }
 
 bool kenji::AOClient::processPendingPacket(const theory::Packet &packet)
@@ -281,9 +271,9 @@ void kenji::AOClient::registerSessionRoutes()
   m_router.registerRoute<theory::ChangeAreaPacket>(&AOClient::process, this);
   m_router.registerRoute<theory::PenaltyPacket>(&AOClient::process, this);
   m_router.registerRoute<theory::SplashPacket>(&AOClient::process, this);
-  m_router.registerRoute<theory::AddEvidencePacket>(&AOClient::process, this);
-  m_router.registerRoute<theory::EditEvidencePacket>(&AOClient::process, this);
-  m_router.registerRoute<theory::DeleteEvidencePacket>(&AOClient::process, this);
+  m_router.registerRoute<theory::InventoryTransferPacket>(&AOClient::process, this);
+  m_router.registerRoute<theory::EvidenceRecordPacket>(&AOClient::process, this);
+  m_router.registerRoute<theory::EvidenceUpdatePacket>(&AOClient::process, this);
   m_router.registerRoute<theory::ModCallPacket>(&AOClient::process, this);
   m_router.registerRoute<theory::ModActionPacket>(&AOClient::process, this);
 }
@@ -295,7 +285,7 @@ void kenji::AOClient::changeArea(theory::AreaId new_area)
     sendServerMessage("You are already in area " + server->getAreaName(areaId()));
     return;
   }
-  if (server->getAreaById(new_area)->lockStatus() == theory::AreaLockStatus::Locked && !server->getAreaById(new_area)->invited().contains(playerId()) && !checkPermission(ACLRole::BYPASS_LOCKS))
+  if (server->getAreaById(new_area)->lockStatus() == theory::AreaLockStatus::Locked && !server->getAreaById(new_area)->invited().contains(id) && !checkPermission(ACLRole::BYPASS_LOCKS))
   {
     sendServerMessage("Area " + server->getAreaName(new_area) + " is locked.");
     return;
@@ -305,16 +295,15 @@ void kenji::AOClient::changeArea(theory::AreaId new_area)
   {
     server->getAreaById(areaId())->changeCharacter(m_character, theory::NoCharacterId);
   }
-  server->getAreaById(areaId())->removeClient(m_character, playerId());
+  server->getAreaById(areaId())->removeClient(m_character, id);
   bool l_character_taken = false;
   if (server->getAreaById(new_area)->charactersTaken().contains(m_character))
   {
     setCharacter(theory::NoCharacterId);
     l_character_taken = true;
   }
-  server->getAreaById(new_area)->addClient(m_character, playerId());
+  server->getAreaById(new_area)->addClient(m_character, id);
   setAreaId(new_area);
-  sendEvidenceList(server->getAreaById(new_area));
 
   theory::PenaltyPacket l_def_penalty;
   l_def_penalty.bar = theory::HealthBar::Defense;
@@ -338,7 +327,7 @@ void kenji::AOClient::changeArea(theory::AreaId new_area)
     l_accepted.character = theory::NoCharacterId;
     shipPacket(l_accepted);
   }
-  server->getAreaById(areaId())->shipTimers(playerId());
+  server->getAreaById(areaId())->shipTimers(id);
   sendServerMessage("You moved to area " + server->getAreaName(areaId()));
   if (server->getAreaById(areaId())->sendAreaMessageOnJoin())
   {
@@ -454,50 +443,6 @@ void kenji::AOClient::handleCommand(QString command, int argc, QStringList argv)
   (this->*(l_command.action))(argc, argv);
 }
 
-void kenji::AOClient::arup(theory::AreaUpdatePacket::Property property, bool broadcast)
-{
-  const QList<AreaData *> l_areas = server->getAreas();
-  for (theory::AreaId l_area_id = 0; l_area_id < l_areas.size(); ++l_area_id)
-  {
-    AreaData *l_area = l_areas.at(l_area_id);
-
-    theory::AreaUpdatePacket l_update;
-    l_update.areaId = l_area_id;
-    l_update.property = property;
-
-    switch (property)
-    {
-    default:
-      return;
-    case theory::AreaUpdatePacket::Status:
-      l_update.data = theory::encodeJson(l_area->status());
-      break;
-    case theory::AreaUpdatePacket::Ownership:
-      l_update.data = theory::encodeJson(l_area->owners());
-      break;
-    case theory::AreaUpdatePacket::Locked:
-      l_update.data = theory::encodeJson(l_area->lockStatus());
-      break;
-    }
-
-    if (broadcast)
-    {
-      server->broadcast(l_update);
-    }
-    else
-    {
-      shipPacket(l_update);
-    }
-  }
-}
-
-void kenji::AOClient::fullArup()
-{
-  arup(theory::AreaUpdatePacket::Status, false);
-  arup(theory::AreaUpdatePacket::Ownership, false);
-  arup(theory::AreaUpdatePacket::Locked, false);
-}
-
 void kenji::AOClient::shipPacket(const theory::Packet &packet)
 {
   if (m_session_status == SessionStatus::Inactive)
@@ -554,7 +499,7 @@ bool kenji::AOClient::checkPermission(ACLRole::Permission f_permission) const
     return true;
   }
 
-  if ((f_permission == ACLRole::CM) && server->getAreaById(areaId())->owners().contains(playerId()))
+  if ((f_permission == ACLRole::CM) && server->getAreaById(areaId())->owners().contains(id))
   {
     return true; // I'm sorry for this hack.
   }
@@ -586,11 +531,6 @@ QString kenji::AOClient::getHwid() const
 bool kenji::AOClient::isAuthenticated() const
 {
   return m_authenticated;
-}
-
-theory::PlayerId kenji::AOClient::playerId() const
-{
-  return m_id;
 }
 
 QString kenji::AOClient::name() const
@@ -677,14 +617,16 @@ void kenji::AOClient::onAfkTimeout()
   }
 }
 
-kenji::AOClient::AOClient(Server *p_server, ULogger &logger, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &f_remote_ip, QObject *parent, theory::PlayerId id, MusicManager *p_manager)
+kenji::AOClient::AOClient(Server *p_server, ULogger &logger, InventoryRegistry &inventories, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &f_remote_ip, QObject *parent, theory::PlayerId playerId, theory::InventoryId f_inventory_id, MusicManager *p_manager)
     : QObject(parent)
+    , id(playerId)
+    , inventoryId(f_inventory_id)
     , m_remote_ip(f_remote_ip)
     , m_socket(socket)
     , m_music_manager(p_manager)
-    , m_id(id)
     , server(p_server)
     , m_logger(logger)
+    , m_inventories(inventories)
 {
   m_afk_timer = new QTimer(this);
   m_afk_timer->setSingleShot(true);

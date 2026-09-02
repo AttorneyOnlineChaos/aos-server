@@ -543,6 +543,30 @@ int kenji::ConfigManager::maxIcTextLength()
   return l_max;
 }
 
+int kenji::ConfigManager::maxInventorySize()
+{
+  bool ok;
+  int l_max = self->m_settings.value("Options/max_inventory_size", 100).toInt(&ok);
+  if (!ok || l_max <= 0)
+  {
+    zWarning(log::config) << "max_inventory_size is not a positive int!";
+    l_max = 100;
+  }
+  return l_max;
+}
+
+int kenji::ConfigManager::maxPersonalInventorySize()
+{
+  bool ok;
+  int l_max = self->m_settings.value("Options/max_personal_inventory_size", 20).toInt(&ok);
+  if (!ok || l_max < 0)
+  {
+    zWarning(log::config) << "max_personal_inventory_size is not a non-negative int!";
+    l_max = 20;
+  }
+  return l_max;
+}
+
 int kenji::ConfigManager::messageFloodguard()
 {
   bool ok;

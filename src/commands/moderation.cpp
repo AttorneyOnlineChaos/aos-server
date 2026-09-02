@@ -157,7 +157,7 @@ void kenji::AOClient::cmdMods(int argc, QStringList argv)
         l_entries << "Role:" << l_client->m_acl_role_id;
       }
       l_entries << "OOC name: " + l_client->name();
-      l_entries << "ID: " + QString::number(l_client->playerId());
+      l_entries << "ID: " + QString::number(l_client->id);
       l_entries << "Area: " + QString::number(l_client->areaId());
       l_entries << "Character: " + l_client->character().toString();
       l_online_count++;
@@ -301,6 +301,23 @@ void kenji::AOClient::cmdSetMOTD(int argc, QStringList argv)
   sendServerMessage("MOTD has been changed.");
 }
 
+void kenji::AOClient::cmdToggleInventory(int argc, QStringList argv)
+{
+  Q_UNUSED(argc);
+  Q_UNUSED(argv);
+
+  const bool l_enabled = !server->personalInventoriesEnabled();
+  server->setPersonalInventoriesEnabled(l_enabled);
+  if (l_enabled)
+  {
+    sendServerBroadcast("Personal inventories have been enabled.");
+  }
+  else
+  {
+    sendServerBroadcast("Personal inventories have been disabled");
+  }
+}
+
 void kenji::AOClient::cmdBans(int argc, QStringList argv)
 {
   Q_UNUSED(argc);
@@ -337,17 +354,6 @@ void kenji::AOClient::cmdUnBan(int argc, QStringList argv)
   {
     sendServerMessage("Couldn't invalidate ban " + argv[0] + ", are you sure it exists?");
   }
-}
-
-void kenji::AOClient::cmdAbout(int argc, QStringList argv)
-{
-  Q_UNUSED(argc);
-  Q_UNUSED(argv);
-
-  theory::OocMessagePacket l_about;
-  l_about.name = "The kenji dev team";
-  l_about.message = "Thank you for using kenji! Made with love by scatterflower, with help from in1tiate, Salanto, and mangosarentliterature. kenji " + QCoreApplication::applicationVersion() + ". For documentation and reporting issues, see the source: https://github.com/AttorneyOnlineChaos/AO-CHAOS-Akashi";
-  shipPacket(l_about);
 }
 
 void kenji::AOClient::cmdMute(int argc, QStringList argv)
@@ -638,7 +644,7 @@ void kenji::AOClient::cmdPermitSaving(int argc, QStringList argv)
     return;
   }
   l_client->m_testimony_saving = true;
-  sendServerMessage("Testimony saving has been enabled for client " + QString::number(l_client->playerId()));
+  sendServerMessage("Testimony saving has been enabled for client " + QString::number(l_client->id));
 }
 
 void kenji::AOClient::cmdKickUid(int argc, QStringList argv)

@@ -31,6 +31,9 @@ class AreaData : public QObject
   Q_OBJECT
 
 public:
+  const theory::AreaId id;
+  const theory::InventoryId inventoryId;
+
   /**
    * @brief Constructor for the AreaData class.
    *
@@ -38,53 +41,7 @@ public:
    * and `YYYYYY` is the actual name of the area.
    * @param p_index The index of the area in the area list.
    */
-  AreaData(const QString &p_name, theory::AreaId p_index, MusicManager *p_music_manager, Broadcaster &p_broadcaster);
-
-  /**
-   * @brief The data for evidence in the area.
-   */
-  struct Evidence
-  {
-    QString name;        //!< The name of the evidence, shown when hovered over clientside.
-    QString description; //!< The longer description of the evidence, when the user opens the evidence window.
-    QString image;       //!< A path originating from `base/evidence/` that points to an image file.
-  };
-
-  /**
-   * @brief The level of "authorisation" needed to be able to modify, add, and remove evidence in the area.
-   */
-  enum class EvidenceMod
-  {
-    FFA,
-    MOD,
-    CM,
-    HIDDEN_CM,
-    HIDDENCM = HIDDEN_CM // Alias for backward compatibility
-  };
-  Q_ENUM(EvidenceMod)
-
-  /**
-   * @var EvidenceMod FFA
-   * "Free-for-all" -- anyone can add, remove or modify evidence.
-   */
-
-  /**
-   * @var EvidenceMod MOD
-   * Only mods can add, remove or modify evidence.
-   */
-
-  /**
-   * @var EvidenceMod CM
-   * Only Case Makers and Mods can add, remove or modify evidence.
-   */
-
-  /**
-   * @var EvidenceMod HIDDEN_CM
-   * Only Case Makers and Mods can add, remove or modify evidence.
-   *
-   * CMs can also hide evidence from various sides by putting `<owner=XXX>` into the evidence's description,
-   * where `XXX` is either a position, of a list of positions separated by `,`.
-   */
+  AreaData(const QString &p_name, theory::AreaId p_index, theory::InventoryId p_inventory_id, MusicManager *p_music_manager, Broadcaster &p_broadcaster);
 
   /**
    * @brief The five "states" the testimony recording system can have in an area.
@@ -323,15 +280,6 @@ public:
   QString name() const;
 
   /**
-   * @brief Returns the index of the area in the server's area list.
-   *
-   * @return See short description.
-   *
-   * @todo The area probably shouldn't know its own index.
-   */
-  theory::AreaId index() const;
-
-  /**
    * @brief Returns the display name of the area.
    *
    * @return See short description.
@@ -366,61 +314,6 @@ public:
    * the separation should help somewhat already, maybe.
    */
   bool changeCharacter(theory::CharacterId f_from = theory::NoCharacterId, theory::CharacterId f_to = theory::NoCharacterId);
-
-  /**
-   * @brief Returns a copy of the list of evidence in the area.
-   *
-   * @return See short description.
-   *
-   * @see #m_evidence
-   */
-  QList<Evidence> evidence() const;
-
-  /**
-   * @brief Changes the location of two pieces of evidence in the evidence list to one another's.
-   *
-   * @param f_eviId1, f_eviId2 The indices of the pieces of evidence to swap.
-   */
-  void swapEvidence(theory::EvidenceId f_eviId1, theory::EvidenceId f_eviId2);
-
-  /**
-   * @brief Appends a piece of evidence to the list of evidence.
-   *
-   * @param f_evi_r The evidence to append.
-   */
-  void appendEvidence(const Evidence &f_evi_r);
-
-  /**
-   * @brief Deletes a piece of evidence from the list of evidence.
-   *
-   * @param f_eviId The ID of the evidence to delete.
-   */
-  void deleteEvidence(theory::EvidenceId f_eviId);
-
-  /**
-   * @brief Replaces a piece of evidence at a given position with the one supplied.
-   *
-   * @param f_eviId The ID of the evidence to replace.
-   * @param f_newEvi_r The new piece of evidence that will replace the aforementioned one.
-   */
-  void replaceEvidence(theory::EvidenceId f_eviId, const Evidence &f_newEvi_r);
-
-  /**
-   * @brief Changes the owner of evidence to "all" when it's presented.
-   *
-   * @param f_eviId The ID of the evidence to change owner for.
-   */
-  void setEvidenceOwnerToAll(theory::EvidenceId f_eviId);
-
-  /**
-   * @brief Gets the visible index by real evidence index for a specific client position.
-   *
-   * @param f_evidenceIndex The real index (0-based) in the evidence array.
-   * @param f_clientPos The position of the client (for owner filtering).
-   * @param f_isCM Whether the client is a Case Manager.
-   * @return The visible index (1-based) as seen by the client, or 0 if not visible.
-   */
-  int getVisibleIndexByEvidenceIndex(theory::EvidenceId f_evidenceIndex, const QString &f_clientPos, bool f_isCM) const;
 
   /**
    * @brief Returns the status of the area.
@@ -622,7 +515,8 @@ public:
    *
    * @see #m_currentMusic
    */
-  void setCurrentMusic(const std::optional<QString> &f_current_song, int f_sample);
+  void setMusic(const std::optional<QString> &f_current_song, int f_sample);
+  void clearMusic();
 
   /**
    * @brief Sets the ambience audio being played in the area.
@@ -630,22 +524,6 @@ public:
    * @param f_newSong_r The name of the new audio that is going to be played in the area.
    */
   void setAmbience(const std::optional<QString> &f_newSong_r);
-
-  /**
-   * @brief Returns the evidence mod in the area.
-   *
-   * @return See short description.
-   *
-   * @see #m_eviMod
-   */
-  EvidenceMod eviMod() const;
-
-  /**
-   * @brief Sets the evidence mod in the area.
-   *
-   * @param f_eviMod_r The new evidence mod.
-   */
-  void setEviMod(const EvidenceMod &f_eviMod_r);
 
   /**
    * @brief Adds a notecard to the area.
@@ -916,6 +794,10 @@ Q_SIGNALS:
    */
   void userJoinedArea(theory::AreaId f_area_index, theory::PlayerId f_user_id);
 
+  void ownersChanged();
+  void statusChanged();
+  void lockStatusChanged();
+
 private:
   /**
    * @brief The list of timers available in the area.
@@ -926,11 +808,6 @@ private:
    * @brief The user-facing and internal name of the area.
    */
   QString m_name;
-
-  /**
-   * @brief The index of the area in the server's area list.
-   */
-  theory::AreaId m_index;
 
   /**
    * @brief The display name of the area.
@@ -948,15 +825,6 @@ private:
    * @brief A list of the character IDs of all characters taken.
    */
   QList<theory::CharacterId> m_charactersTaken;
-
-  /**
-   * @brief A list of Evidence currently available in the area's court record.
-   *
-   * @details This contains *all* evidence, not just the ones a given side can see.
-   *
-   * @see HIDDEN_CM
-   */
-  QList<Evidence> m_evidence;
 
   /**
    * @brief The amount of clients inside the area.
@@ -1063,13 +931,6 @@ private:
    * `base/sounds/music/` clientside, with file extension.
    */
   std::optional<QString> m_currentAmbience;
-
-  /**
-   * @brief The evidence mod of the area.
-   *
-   * @see EvidenceMod
-   */
-  EvidenceMod m_eviMod;
 
   /**
    * @brief The list of notecards in the area.

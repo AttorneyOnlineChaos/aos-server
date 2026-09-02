@@ -13,7 +13,7 @@ void kenji::AOClient::process(const theory::PenaltyPacket &packet)
     return;
   }
 
-  if (l_area->lockStatus() == theory::AreaLockStatus::Spectatable && !l_area->invited().contains(playerId()) && !checkPermission(ACLRole::BYPASS_LOCKS))
+  if (l_area->lockStatus() == theory::AreaLockStatus::Spectatable && !l_area->invited().contains(id) && !checkPermission(ACLRole::BYPASS_LOCKS))
   {
     sendServerMessage("Spectators are blocked from using the judge controls.");
     return;
@@ -41,12 +41,12 @@ void kenji::AOClient::process(const theory::PenaltyPacket &packet)
   theory::PenaltyPacket l_def_penalty;
   l_def_penalty.bar = theory::HealthBar::Defense;
   l_def_penalty.value = l_area->defHP();
-  server->broadcastToArea(l_def_penalty, l_area->index());
+  server->broadcastToArea(l_def_penalty, l_area->id);
 
   theory::PenaltyPacket l_pro_penalty;
   l_pro_penalty.bar = theory::HealthBar::Prosecution;
   l_pro_penalty.value = l_area->proHP();
-  server->broadcastToArea(l_pro_penalty, l_area->index());
+  server->broadcastToArea(l_pro_penalty, l_area->id);
 
   updateJudgeLog(l_area, this, "updated the penalties");
 }

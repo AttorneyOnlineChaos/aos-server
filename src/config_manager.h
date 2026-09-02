@@ -164,6 +164,9 @@ public:
    */
   static int maxIcTextLength();
 
+  static int maxInventorySize();
+  static int maxPersonalInventorySize();
+
   /**
    * @brief Returns the duration of the message floodguard..
    */

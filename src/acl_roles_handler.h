@@ -24,7 +24,6 @@ public:
     MODIFY_USERS = 1 << 3,
     CM = 1 << 4,
     GLOBAL_TIMER = 1 << 5,
-    EVI_MOD = 1 << 6,
     MOTD = 1 << 7,
     ANNOUNCE = 1 << 8,
     MODCHAT = 1 << 9,

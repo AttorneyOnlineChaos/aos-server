@@ -15,7 +15,7 @@ void kenji::AOClient::process(const theory::SplashPacket &packet)
     return;
   }
 
-  if (l_area->lockStatus() == theory::AreaLockStatus::Spectatable && !l_area->invited().contains(playerId()) && !checkPermission(ACLRole::BYPASS_LOCKS))
+  if (l_area->lockStatus() == theory::AreaLockStatus::Spectatable && !l_area->invited().contains(id) && !checkPermission(ACLRole::BYPASS_LOCKS))
   {
     sendServerMessage("Spectators are blocked from using the judge controls.");
     return;

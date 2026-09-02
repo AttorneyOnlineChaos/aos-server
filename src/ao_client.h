@@ -4,6 +4,9 @@
 #include "core/pointer_types.h"
 #include "db_manager.h"
 #include "game/game_defs.h"
+#include "game/game_error.h"
+#include "inventory_handle.h"
+#include "inventory_registry.h"
 #include "logger/u_logger.h"
 #include "network/cargo_socket.h"
 #include "network/packet_router.h"
@@ -83,7 +86,7 @@ public:
    * @param user_id The user ID of the client.
    * @param parent Qt-based parent, passed along to inherited constructor from QObject.
    */
-  AOClient(Server *p_server, ULogger &logger, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &f_remote_ip, QObject *parent = nullptr, theory::PlayerId id = theory::NoPlayerId, MusicManager *p_manager = nullptr);
+  AOClient(Server *p_server, ULogger &logger, InventoryRegistry &inventories, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &f_remote_ip, QObject *parent = nullptr, theory::PlayerId playerId = theory::NoPlayerId, theory::InventoryId f_inventory_id = theory::NoInventoryId, MusicManager *p_manager = nullptr);
 
   /**
    * @brief Destructor for the AOClient instance.
@@ -139,7 +142,8 @@ public:
   void beginSession();
   void resumeSession();
 
-  theory::PlayerId playerId() const;
+  const theory::PlayerId id;
+  const theory::InventoryId inventoryId;
 
   QString name() const;
   void setName(const QString &f_name);
@@ -308,21 +312,6 @@ public:
   bool isSpectator() const;
 
   /**
-   * @brief Sends or announces an ARUP update.
-   *
-   * @param type The type of ARUP to send.
-   * @param broadcast If true, the update is sent out to all clients on the server. If false, it is only sent to this client.
-   *
-   * @see AOClient::ARUPType
-   */
-  void arup(theory::AreaUpdatePacket::Property property, bool broadcast);
-
-  /**
-   * @brief Sends all four types of ARUP to the client.
-   */
-  void fullArup();
-
-  /**
    * @brief Sends an out-of-character message originating from the server to the client.
    *
    * @param message The text of the message to send.
@@ -344,20 +333,6 @@ public:
   void sendServerBroadcast(const QString &message);
 
   /**
-   * @brief Calls AOClient::updateEvidenceList() for every client in the current client's area.
-   *
-   * @param area The current client's area.
-   */
-  void sendEvidenceList(AreaData *area) const;
-
-  /**
-   * @brief Updates the evidence list in the area for the client.
-   *
-   * @param area The client's area.
-   */
-  void updateEvidenceList(AreaData *area);
-
-  /**
    * @brief Removes excessive combining characters from a text.
    *
    * @param p_text The text to clear of its excessive combining characters.
@@ -367,15 +342,6 @@ public:
    * @see https://en.wikipedia.org/wiki/Zalgo_text
    */
   QString dezalgo(QString p_text);
-
-  /**
-   * @brief Checks if the client can modify the evidence in the area.
-   *
-   * @param area The client's area.
-   *
-   * @return True if the client can modify the evidence, false if not.
-   */
-  bool checkEvidenceAccess(AreaData *area);
 
   /**
    * @brief Changes the client's character.
@@ -482,13 +448,11 @@ public:
   QString m_acl_role_id;
 
   /**
-   * @brief The character ID of the other character that the client wants to pair up with.
+   * @brief The player this client wants to pair up with.
    *
-   * @details Though this uses character ID, a client with *that* character ID must exist in the area for the pairing to work.
-   * Furthermore, the owner of that character ID must also do the reverse to this client, making their `pairing_with` equal
-   * to this client's character ID.
+   * @details That player must be in the area, at the same position, and must have set their `m_pairing_with` to this client's id.
    */
-  theory::CharacterId m_pairing_with = theory::NoCharacterId;
+  theory::PlayerId m_pairing_with = theory::NoPlayerId;
 
   /**
    * @brief The name of the emote last used by the client. No extension.
@@ -557,6 +521,7 @@ private:
   void registerSessionRoutes();
 
   void shipSnapshot();
+  void shipGameError(const theory::GameError &error);
 
   void sendCharacterList();
 
@@ -570,18 +535,13 @@ private:
   void process(const theory::ChangeAreaPacket &packet);
   void process(const theory::PenaltyPacket &packet);
   void process(const theory::SplashPacket &packet);
-  void process(const theory::AddEvidencePacket &packet);
-  void process(const theory::EditEvidencePacket &packet);
-  void process(const theory::DeleteEvidencePacket &packet);
+  void process(const theory::InventoryTransferPacket &packet);
+  void process(const theory::EvidenceRecordPacket &packet);
+  void process(const theory::EvidenceUpdatePacket &packet);
   void process(const theory::ModCallPacket &packet);
   void process(const theory::ModActionPacket &packet);
 
   std::optional<theory::IcMessagePacket> validateIcMessage(const theory::IcMessagePacket &packet);
-
-  /**
-   * @brief The user ID of the client.
-   */
-  theory::PlayerId m_id;
 
   /**
    * @brief The ID of the area the client is currently in.
@@ -599,6 +559,8 @@ private:
   Server *server;
 
   ULogger &m_logger;
+
+  InventoryRegistry &m_inventories;
 
   /**
    * @brief Changes the client's in-character position.
@@ -996,15 +958,6 @@ private:
   void cmdSetMOTD(int argc, QStringList argv);
 
   /**
-   * @brief Gives a very brief description of Kenji.
-   *
-   * @details No arguments.
-   *
-   * @iscommand
-   */
-  void cmdAbout(int argc, QStringList argv);
-
-  /**
    * @brief Lists the currently logged-in moderators on the server.
    *
    * @details No arguments.
@@ -1139,6 +1092,8 @@ private:
    * @iscommand
    */
   void cmdAllowBlankposting(int argc, QStringList argv);
+
+  void cmdToggleInventory(int argc, QStringList argv);
 
   /**
    * @brief Looks up info on a ban.
@@ -1689,29 +1644,6 @@ private:
    * @iscommand
    */
   void cmdClearDoc(int argc, QStringList argv);
-
-  /**
-   * @brief Changes the evidence mod in the area.
-   *
-   * @details The only argument is the **evidence mod** to change to.
-   *
-   * @iscommand
-   *
-   * @see AreaData::EvidenceMod
-   */
-  void cmdEvidenceMod(int argc, QStringList argv);
-
-  /**
-   * @brief Changes position of two pieces of evidence in the area.
-   *
-   * @details The two arguments are the indices of the evidence items you want to swap the position of.
-   *
-   * @iscommand
-   *
-   * @see Area::Evidence_Swap
-   *
-   */
-  void cmdEvidence_Swap(int argc, QStringList argv);
 
   /**
    * @brief Sets are to PLAYBACK mode

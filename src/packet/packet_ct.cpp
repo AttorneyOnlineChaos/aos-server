@@ -73,5 +73,5 @@ void kenji::AOClient::process(const theory::OocMessagePacket &packet)
     l_broadcast.message = l_message;
     server->broadcastToArea(l_broadcast, areaId());
   }
-  m_logger.logOOC(server->getAreaById(areaId())->name(), m_ipid, name(), QString::number(playerId()), (m_character.toString() + " " + characterName().value_or(QString())), l_message);
+  m_logger.logOOC(server->getAreaById(areaId())->name(), m_ipid, name(), QString::number(id), (m_character.toString() + " " + characterName().value_or(QString())), l_message);
 }

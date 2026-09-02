@@ -8,50 +8,11 @@
 
 #include <QQueue>
 
-void kenji::AOClient::sendEvidenceList(AreaData *area) const
+void kenji::AOClient::shipGameError(const theory::GameError &error)
 {
-  const QList<AOClient *> l_clients = server->getClients();
-  for (AOClient *l_client : l_clients)
-  {
-    if (l_client->areaId() == areaId())
-    {
-      l_client->updateEvidenceList(area);
-    }
-  }
-}
-
-void kenji::AOClient::updateEvidenceList(AreaData *area)
-{
-  theory::EvidenceListPacket l_list;
-
-  const QList<AreaData::Evidence> l_area_evidence = area->evidence();
-  for (int i = 0; i < l_area_evidence.length(); i++)
-  {
-    const AreaData::Evidence &evidence = l_area_evidence.at(i);
-    if (!checkPermission(ACLRole::CM) && area->eviMod() == AreaData::EvidenceMod::HIDDEN_CM)
-    {
-      QRegularExpression l_regex("<owner=(.*?)>");
-      QRegularExpressionMatch l_match = l_regex.match(evidence.description);
-      if (l_match.hasMatch())
-      {
-        QStringList owners = l_match.captured(1).split(",");
-        if (!owners.contains("all", Qt::CaseSensitivity::CaseInsensitive) && !owners.contains(m_pos, Qt::CaseSensitivity::CaseInsensitive))
-        {
-          continue;
-        }
-      }
-      // no match = show it to all
-    }
-
-    theory::EvidenceItem l_item;
-    l_item.id = i;
-    l_item.evidence.name = evidence.name;
-    l_item.evidence.description = evidence.description;
-    l_item.evidence.image = evidence.image;
-    l_list.items.append(l_item);
-  }
-
-  shipPacket(l_list);
+  theory::GameErrorPacket l_packet;
+  l_packet.error = error;
+  shipPacket(l_packet);
 }
 
 QString kenji::AOClient::dezalgo(QString p_text)
@@ -61,26 +22,10 @@ QString kenji::AOClient::dezalgo(QString p_text)
   return filtered;
 }
 
-bool kenji::AOClient::checkEvidenceAccess(AreaData *area)
-{
-  switch (area->eviMod())
-  {
-  case AreaData::EvidenceMod::FFA:
-    return true;
-  case AreaData::EvidenceMod::CM:
-  case AreaData::EvidenceMod::HIDDEN_CM:
-    return checkPermission(ACLRole::CM);
-  case AreaData::EvidenceMod::MOD:
-    return m_authenticated;
-  default:
-    return false;
-  }
-}
-
 void kenji::AOClient::updateJudgeLog(AreaData *area, AOClient *client, const QString &action)
 {
   QString l_timestamp = QTime::currentTime().toString("hh:mm:ss");
-  QString l_uid = QString::number(client->playerId());
+  QString l_uid = QString::number(client->id);
   QString l_char_name = client->character().toString();
   QString l_ipid = client->getIpid();
   QString l_message = action;

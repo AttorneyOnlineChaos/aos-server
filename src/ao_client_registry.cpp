@@ -1,17 +1,15 @@
 #include "ao_client_registry.h"
 
-kenji::AOClientRegistry::AOClientRegistry(Server &server, ULogger &logger, MusicManager &musicManager, int capacity, QObject *parent)
+#include "inventory/client_inventory_handle.h"
+
+kenji::AOClientRegistry::AOClientRegistry(Server &server, ULogger &logger, MusicManager &musicManager, InventoryRegistry &inventories, int capacity, QObject *parent)
     : QObject{parent}
     , _server{server}
     , _logger{logger}
     , _musicManager{musicManager}
+    , _inventories{inventories}
     , _capacity{capacity}
-{
-  for (int i = _capacity - 1; i >= 0; i--)
-  {
-    _availableIds.push(i);
-  }
-}
+{}
 
 int kenji::AOClientRegistry::capacity() const
 {
@@ -61,6 +59,11 @@ QList<kenji::AOClient *> kenji::AOClientRegistry::clientsByHwid(const QString &h
   return clientsIf([&hwid](const AOClient *client) { return client->getHwid() == hwid; });
 }
 
+QList<kenji::AOClient *> kenji::AOClientRegistry::clientsInArea(theory::AreaId areaId) const
+{
+  return clientsIf([areaId](const AOClient *client) { return client->areaId() == areaId; });
+}
+
 int kenji::AOClientRegistry::countByAddress(const QHostAddress &address) const
 {
   return countIf([&address](const AOClient *client) { return address.isEqual(client->m_remote_ip); });
@@ -68,27 +71,30 @@ int kenji::AOClientRegistry::countByAddress(const QHostAddress &address) const
 
 kenji::AOClient *kenji::AOClientRegistry::create(const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &address)
 {
-  if (_availableIds.isEmpty())
+  if (_clients.size() >= _capacity)
   {
     return nullptr;
   }
 
-  const theory::PlayerId id = _availableIds.pop();
-  AOClient *client = new AOClient(&_server, _logger, socket, address, this, id, &_musicManager);
+  const theory::PlayerId id = _ids.acquire();
+  const theory::InventoryId inventoryId = _inventories.add(theory::makeShared<ClientInventoryHandle>(id, _server));
+  AOClient *client = new AOClient(&_server, _logger, _inventories, socket, address, this, id, inventoryId, &_musicManager);
   _clients.insert(id, client);
-  Q_EMIT clientAdded(client);
+  Q_EMIT clientAdded(id);
   return client;
 }
 
 void kenji::AOClientRegistry::remove(AOClient *client)
 {
-  if (!client || _clients.value(client->playerId()) != client)
+  if (!client || _clients.value(client->id) != client)
   {
     return;
   }
 
-  _clients.remove(client->playerId());
-  _availableIds.push(client->playerId());
-  Q_EMIT clientRemoved(client);
+  Q_EMIT aboutToRemoveClient(client->id);
+  _clients.remove(client->id);
+  _inventories.remove(client->inventoryId);
+  _ids.release(client->id);
+  Q_EMIT clientRemoved(client->id);
   client->deleteLater();
 }

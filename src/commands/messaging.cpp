@@ -12,7 +12,6 @@ void kenji::AOClient::cmdPos(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   changePosition(argv[0]);
-  updateEvidenceList(server->getAreaById(areaId()));
 }
 
 void kenji::AOClient::cmdForcePos(int argc, QStringList argv)
@@ -160,7 +159,7 @@ void kenji::AOClient::cmdPM(int argc, QStringList argv)
     return;
   }
   QString l_message = argv.join(" "); //...which means it will not end up as part of the message
-  l_target_client->sendServerMessage("Message from " + name() + " (" + QString::number(playerId()) + "): " + l_message);
+  l_target_client->sendServerMessage("Message from " + name() + " (" + QString::number(id) + "): " + l_message);
   sendServerMessage("PM sent to " + QString::number(l_target_id) + ". Message: " + l_message);
 }
 
@@ -643,7 +642,7 @@ void kenji::AOClient::cmdA(int argc, QStringList argv)
     sendServerMessage("This does not look like a valid AreaID.");
     return;
   }
-  if (!l_area->owners().contains(playerId()))
+  if (!l_area->owners().contains(id))
   {
     sendServerMessage("You are not CM in that area.");
     return;
@@ -668,7 +667,7 @@ void kenji::AOClient::cmdS(int argc, QStringList argv)
 
   for (theory::AreaId i = 0; i <= l_all_areas; i++)
   {
-    if (server->getAreaById(i)->owners().contains(playerId()))
+    if (server->getAreaById(i)->owners().contains(id))
     {
       theory::OocMessagePacket l_packet;
       l_packet.name = "[CM]" + l_sender_name;

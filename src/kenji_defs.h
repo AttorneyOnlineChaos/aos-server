@@ -15,5 +15,6 @@ Q_DECLARE_LOGGING_CATEGORY(network)
 Q_DECLARE_LOGGING_CATEGORY(protocol)
 Q_DECLARE_LOGGING_CATEGORY(discord)
 Q_DECLARE_LOGGING_CATEGORY(acl)
+Q_DECLARE_LOGGING_CATEGORY(evidence)
 } // namespace log
 } // namespace kenji

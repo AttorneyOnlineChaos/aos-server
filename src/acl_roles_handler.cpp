@@ -45,10 +45,6 @@ const QHash<kenji::ACLRole::Permission, QString> kenji::ACLRole::PERMISSION_CAPT
         "global_timer",
     },
     {
-        ACLRole::Permission::EVI_MOD,
-        "modify_evidence",
-    },
-    {
         ACLRole::Permission::MOTD,
         "motd",
     },

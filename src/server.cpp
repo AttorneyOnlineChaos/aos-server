@@ -9,6 +9,7 @@
 #include "core/logging.h"
 #include "db_manager.h"
 #include "discord.h"
+#include "inventory/area_inventory_handle.h"
 #include "kenji_defs.h"
 #include "kenji_info.h"
 #include "logger/u_logger.h"
@@ -131,11 +132,15 @@ bool kenji::Server::start()
   music_manager = new MusicManager(*this, ConfigManager::cdnList(), ConfigManager::musiclist(), this);
   connect(this, &Server::reloadRequest, music_manager, &MusicManager::reloadRequest);
 
-  m_client_registry = theory::makeUnique<AOClientRegistry>(*this, *logger, *music_manager, ConfigManager::maxPlayers());
+  m_inventory_registry = theory::makeUnique<InventoryRegistry>();
+  m_client_registry = theory::makeUnique<AOClientRegistry>(*this, *logger, *music_manager, *m_inventory_registry, ConfigManager::maxPlayers());
   connect(m_client_registry.get(), &AOClientRegistry::clientAdded, this, &Server::increasePlayerCount);
-  connect(m_client_registry.get(), &AOClientRegistry::clientAdded, &m_player_state_observer, &PlayerStateObserver::registerClient);
   connect(m_client_registry.get(), &AOClientRegistry::clientRemoved, this, &Server::decreasePlayerCount);
-  connect(m_client_registry.get(), &AOClientRegistry::clientRemoved, &m_player_state_observer, &PlayerStateObserver::unregisterClient);
+  connect(m_client_registry.get(), &AOClientRegistry::clientAdded, this, [this](theory::PlayerId f_player_id) {
+    AOClient *l_client = m_client_registry->client(f_player_id);
+    m_game_observers.insert(f_player_id, new ClientGameObserver(*l_client, *m_client_registry, *m_inventory_registry, *this, l_client));
+  });
+  connect(m_client_registry.get(), &AOClientRegistry::aboutToRemoveClient, this, [this](theory::PlayerId f_player_id) { delete m_game_observers.take(f_player_id); });
   m_session_registry = theory::makeUnique<SessionRegistry>(*m_client_registry);
   m_connection_pool = theory::makeUnique<ConnectionPool>(*m_session_registry, *db_manager);
   connect(m_connection_pool.get(), &ConnectionPool::connectionAttempted, logger, &ULogger::logConnectionAttempt);
@@ -145,9 +150,16 @@ bool kenji::Server::start()
   for (theory::AreaId i = 0; i < m_area_names.length(); i++)
   {
     QString area_name = QString::number(i) + ":" + m_area_names[i];
-    AreaData *l_area = new AreaData(area_name, i, music_manager, *this);
+    const theory::InventoryId inventory_id = m_inventory_registry->add(theory::makeShared<AreaInventoryHandle>(i, *this));
+    AreaData *l_area = new AreaData(area_name, i, inventory_id, music_manager, *this);
     m_areas.insert(i, l_area);
     connect(l_area, &AreaData::userJoinedArea, music_manager, &MusicManager::userJoinedArea);
+    connect(l_area, &AreaData::ownersChanged, this, [this, l_area] {
+      if (l_area->owners().isEmpty())
+      {
+        m_inventory_registry->clear(l_area->inventoryId);
+      }
+    });
     music_manager->registerArea(i);
   }
 
@@ -299,6 +311,24 @@ void kenji::Server::startMessageFloodguard(int f_duration)
 {
   m_can_send_ic_messages = false;
   m_message_floodguard_timer->start(f_duration);
+}
+
+bool kenji::Server::personalInventoriesEnabled() const
+{
+  return m_personal_inventories_enabled;
+}
+
+void kenji::Server::setPersonalInventoriesEnabled(bool enabled)
+{
+  m_personal_inventories_enabled = enabled;
+  if (!enabled)
+  {
+    for (const AOClient *l_client : m_client_registry->clients())
+    {
+      m_inventory_registry->clear(l_client->inventoryId);
+    }
+  }
+  Q_EMIT personalInventoriesToggled(enabled);
 }
 
 QHostAddress kenji::Server::parseToIPv4(const QHostAddress &f_remote_ip)
@@ -500,6 +530,11 @@ kenji::ACLRolesHandler *kenji::Server::getACLRolesHandler()
 kenji::CommandExtensionCollection *kenji::Server::getCommandExtensionCollection()
 {
   return command_extension_collection;
+}
+
+kenji::ClientGameObserver &kenji::Server::gameObserver(theory::PlayerId playerId) const
+{
+  return *m_game_observers.value(playerId);
 }
 
 void kenji::Server::allowMessage()

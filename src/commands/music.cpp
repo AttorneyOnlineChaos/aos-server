@@ -45,7 +45,7 @@ void kenji::AOClient::cmdPlay(int argc, QStringList argv)
   }
   AreaData *l_area = server->getAreaById(areaId());
   const ACLRole l_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
-  if (!l_area->owners().contains(playerId()) && !l_area->isPlayEnabled() && !l_role.checkPermission(ACLRole::CM))
+  if (!l_area->owners().contains(id) && !l_area->isPlayEnabled() && !l_role.checkPermission(ACLRole::CM))
   { // Make sure we have permission to play music
     sendServerMessage("Free music play is disabled in this area.");
     return;
@@ -56,7 +56,7 @@ void kenji::AOClient::cmdPlay(int argc, QStringList argv)
     l_final_track = l_song;
   }
 
-  l_area->setCurrentMusic(l_final_track, l_sample);
+  l_area->setMusic(l_final_track, l_sample);
   theory::MusicChangedPacket l_music_change;
   l_music_change.track = l_final_track;
   l_music_change.sample = l_sample;
@@ -77,7 +77,7 @@ void kenji::AOClient::cmdPlayAmbience(int argc, QStringList argv)
     return;
   }
   AreaData *l_area = server->getAreaById(areaId());
-  if (!l_area->owners().contains(playerId()) && !l_area->isPlayEnabled())
+  if (!l_area->owners().contains(id) && !l_area->isPlayEnabled())
   { // Make sure we have permission to play music
     sendServerMessage("Free ambience play is disabled in this area.");
     return;

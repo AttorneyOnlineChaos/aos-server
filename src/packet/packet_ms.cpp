@@ -43,25 +43,15 @@ void kenji::AOClient::process(const theory::IcMessagePacket &packet)
     l_message.side = m_pos;
   }
 
-  // Check if evidence was presented and we need to handle HIDDEN_CM mode
-  if (l_message.evidenceId != theory::NoEvidenceId && l_area->eviMod() == AreaData::EvidenceMod::HIDDEN_CM)
+  if (l_message.evidenceId != theory::NoEvidenceId)
   {
-    if (l_area->getVisibleIndexByEvidenceIndex(l_message.evidenceId, m_pos, checkPermission(ACLRole::CM)) <= 0)
-    {
-      l_message.evidenceId = theory::NoEvidenceId;
-    }
-    else
-    {
-      l_area->setEvidenceOwnerToAll(l_message.evidenceId);
-      // Update evidence list for all clients in the area
-      sendEvidenceList(l_area);
-    }
+    m_inventories.setEvidenceRevealed(l_message.evidenceId, true);
   }
 
-  l_message.playerId = playerId();
+  l_message.playerId = id;
   server->broadcastToArea(l_message, areaId());
 
-  m_logger.logIC(l_area->name(), m_ipid, name(), QString::number(playerId()), (m_character.toString() + " " + characterName().value_or(QString())), m_last_message);
+  m_logger.logIC(l_area->name(), m_ipid, name(), QString::number(id), (m_character.toString() + " " + characterName().value_or(QString())), m_last_message);
   l_area->updateLastICMessage(l_message);
 
   l_area->startMessageFloodguard(ConfigManager::messageFloodguard());
@@ -78,7 +68,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
     return std::nullopt;
   }
   AreaData *l_area = server->getAreaById(areaId());
-  if (l_area->lockStatus() == theory::AreaLockStatus::Spectatable && !l_area->invited().contains(playerId()) && !checkPermission(ACLRole::BYPASS_LOCKS))
+  if (l_area->lockStatus() == theory::AreaLockStatus::Spectatable && !l_area->invited().contains(id) && !checkPermission(ACLRole::BYPASS_LOCKS))
   {
     // Non-invited players cannot speak in spectatable areas
     return std::nullopt;
@@ -112,6 +102,17 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
     m_emote = "";
   }
   l_message.emote = m_emote;
+
+  if (l_message.evidenceId != theory::NoEvidenceId)
+  {
+    const auto l_owner = m_inventories.inventoryOf(l_message.evidenceId);
+    const auto l_item = m_inventories.evidence(l_message.evidenceId);
+    if (!l_owner || !l_item || !server->gameObserver(id).isEvidenceVisible(l_owner.value(), l_item->evidence))
+    {
+      shipGameError(theory::GameError::invalidEvidence(QString::number(l_message.evidenceId)));
+      return std::nullopt;
+    }
+  }
 
   // message text
   if (packet.message.size() > ConfigManager::maxIcTextLength())
@@ -192,7 +193,6 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
   {
     m_pos = packet.side;
     m_pos.replace("../", "").replace("..\\", "");
-    updateEvidenceList(server->getAreaById(areaId()));
   }
 
   // emote modifier
@@ -223,12 +223,6 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
     l_message.shout = theory::Shout{};
   }
 
-  // evidence
-  if (l_message.evidenceId >= l_area->evidence().length())
-  {
-    return std::nullopt;
-  }
-
   m_flipping = packet.flip;
 
   // showname
@@ -257,12 +251,12 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
   setCharacterName(l_incoming_showname);
 
   // pairing
-  m_pairing_with = packet.pair ? packet.pair->character : theory::NoCharacterId;
+  m_pairing_with = packet.pair ? packet.pair->playerId : theory::NoPlayerId;
   m_offset_x = packet.offsetX;
   m_offset_y = packet.offsetY;
 
   bool l_pairing = false;
-  if (l_message.pair)
+  if (l_message.pair && m_pairing_with != id)
   {
     for (theory::PlayerId l_player_id : l_area->joinedIDs())
     {
@@ -271,8 +265,9 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
       {
         continue;
       }
-      if (l_client->m_pairing_with == m_character && m_pairing_with != m_character && l_client->character() == m_pairing_with && l_client->m_pos == m_pos)
+      if (l_client->id == m_pairing_with && l_client->m_pairing_with == id && l_client->m_pos == m_pos)
       {
+        l_message.pair->playerId = l_client->id;
         l_message.pair->character = l_client->character();
         l_message.pair->emote = l_client->m_emote;
         l_message.pair->offsetX = l_client->m_offset_x;
@@ -303,7 +298,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
   }
 
   // additive
-  if (l_area->lastICMessage().playerId != playerId())
+  if (l_area->lastICMessage().playerId != id)
   {
     l_message.additive = false;
   }

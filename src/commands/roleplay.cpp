@@ -218,7 +218,7 @@ void kenji::AOClient::cmdTimer(int argc, QStringList argv)
     l_timers.append("Currently active timers:");
     for (theory::TimerId l_timer_id = 0; l_timer_id < theory::TimerCount; l_timer_id++)
     {
-      l_timers.append(getAreaTimer(l_area->index(), l_timer_id));
+      l_timers.append(getAreaTimer(l_area->id, l_timer_id));
     }
     sendServerMessage(l_timers.join("\n"));
     return;
@@ -237,7 +237,7 @@ void kenji::AOClient::cmdTimer(int argc, QStringList argv)
   // Shows the status of one timer
   if (argc == 1)
   {
-    sendServerMessage(getAreaTimer(l_area->index(), l_timer_id));
+    sendServerMessage(getAreaTimer(l_area->id, l_timer_id));
     return;
   }
 

@@ -19,12 +19,6 @@ void kenji::AOClient::shipSnapshot()
   l_music_list.playlists = m_music_manager->playlists(areaId());
   shipPacket(l_music_list);
 
-  theory::AreaListPacket l_area_list;
-  l_area_list.areas = server->getAreaNames();
-  shipPacket(l_area_list);
-
-  sendEvidenceList(l_area);
-
   theory::PenaltyPacket l_def_penalty;
   l_def_penalty.bar = theory::HealthBar::Defense;
   l_def_penalty.value = l_area->defHP();
@@ -43,26 +37,24 @@ void kenji::AOClient::shipSnapshot()
 
   sendServerMessage("=== MOTD ===\r\n" + ConfigManager::motd() + "\r\n=============");
 
-  fullArup(); // Give client all the area data
-
-  server->shipGlobalTimer(playerId());
-  l_area->shipTimers(playerId());
+  server->shipGlobalTimer(id);
+  l_area->shipTimers(id);
 }
 
 void kenji::AOClient::beginSession()
 {
   if (server->getAreaById(areaId()) == nullptr)
   {
-    setAreaId(server->defaultArea()->index());
+    setAreaId(server->defaultArea()->id);
   }
 
   shipSnapshot();
 
   theory::WelcomePacket l_welcome;
-  l_welcome.playerId = playerId();
+  l_welcome.playerId = id;
   shipPacket(l_welcome);
 
-  server->getAreaById(areaId())->addClient(theory::NoCharacterId, playerId());
+  server->getAreaById(areaId())->addClient(theory::NoCharacterId, id);
 }
 
 void kenji::AOClient::resumeSession()
@@ -70,7 +62,7 @@ void kenji::AOClient::resumeSession()
   shipSnapshot();
 
   theory::WelcomePacket l_welcome;
-  l_welcome.playerId = playerId();
+  l_welcome.playerId = id;
   shipPacket(l_welcome);
 
   sendCharacterSelection();

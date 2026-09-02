@@ -5,19 +5,20 @@
 #include "ao_client_registry.h"
 #include "area_data.h"
 #include "broadcaster.h"
+#include "client_game_observer.h"
 #include "command_extension.h"
 #include "config_manager.h"
 #include "connection_pool.h"
 #include "core/pointer_types.h"
 #include "db_manager.h"
 #include "discord.h"
+#include "inventory_registry.h"
 #include "join_floodguard.h"
 #include "logger/u_logger.h"
 #include "medieval_parser.h"
 #include "music_manager.h"
 #include "network/packet.h"
 #include "network/packet_factory.h"
-#include "player_state_observer.h"
 #include "server_publisher.h"
 #include "session_registry.h"
 #include "timer.h"
@@ -248,6 +249,8 @@ public:
    */
   CommandExtensionCollection *getCommandExtensionCollection();
 
+  ClientGameObserver &gameObserver(theory::PlayerId playerId) const;
+
   /**
    * @brief Returns whatever a game message may be broadcasted or not.
    *
@@ -261,6 +264,9 @@ public:
    * @param f_duration The duration of the message floodguard timer.
    */
   void startMessageFloodguard(int f_duration);
+
+  bool personalInventoriesEnabled() const;
+  void setPersonalInventoriesEnabled(bool enabled);
 
   /**
    * @brief Attempts to parse a IPv6 mapped IPv4 to an IPv4.
@@ -325,6 +331,8 @@ Q_SIGNALS:
    */
   void banWebhookRequest(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID);
 
+  void personalInventoriesToggled(bool enabled);
+
 private:
   /**
    * @brief Listens for incoming connections.
@@ -365,13 +373,15 @@ private:
    */
   theory::Unique<MedievalParser> medieval_parser;
 
+  theory::Unique<InventoryRegistry> m_inventory_registry;
+
   theory::Unique<AOClientRegistry> m_client_registry;
 
   theory::Unique<SessionRegistry> m_session_registry;
 
   theory::Unique<ConnectionPool> m_connection_pool;
 
-  PlayerStateObserver m_player_state_observer;
+  QHash<theory::PlayerId, ClientGameObserver *> m_game_observers;
 
   /**
    * @brief The overall player count in the server.
@@ -415,6 +425,8 @@ private:
    * @brief If false, IC messages will be rejected.
    */
   bool m_can_send_ic_messages = true;
+
+  bool m_personal_inventories_enabled = true;
 
   /**
    * @brief The database manager on the server, used to store users' bans and authorisation details.

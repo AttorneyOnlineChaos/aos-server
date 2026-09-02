@@ -18,11 +18,10 @@ void kenji::AOClient::cmdCM(int argc, QStringList argv)
   }
   else if (l_area->owners().isEmpty())
   { // no one owns this area, and it's not protected
-    l_area->addOwner(playerId());
+    l_area->addOwner(id);
     sendServerMessageArea(l_sender_name + " is now CM in this area.");
-    arup(theory::AreaUpdatePacket::Ownership, true);
   }
-  else if (!l_area->owners().contains(playerId()))
+  else if (!l_area->owners().contains(id))
   { // there is already a CM, and it isn't us
     sendServerMessage("You cannot become a CM in this area when someone else is. You must be CM'ed by an existing one.");
   }
@@ -40,14 +39,13 @@ void kenji::AOClient::cmdCM(int argc, QStringList argv)
       sendServerMessage("Unable to find client with ID " + argv[0] + ".");
       return;
     }
-    if (l_area->owners().contains(l_owner_candidate->playerId()))
+    if (l_area->owners().contains(l_owner_candidate->id))
     {
       sendServerMessage("User is already a CM in this area.");
       return;
     }
-    l_area->addOwner(l_owner_candidate->playerId());
+    l_area->addOwner(l_owner_candidate->id);
     sendServerMessageArea(l_owner_candidate->name() + " is now CM in this area.");
-    arup(theory::AreaUpdatePacket::Ownership, true);
   }
   else
   {
@@ -67,7 +65,7 @@ void kenji::AOClient::cmdUnCM(int argc, QStringList argv)
   }
   else if (argc == 0)
   {
-    l_uid = playerId();
+    l_uid = id;
     sendServerMessage("You are no longer CM in this area.");
   }
   else if (checkPermission(ACLRole::UNCM) && argc >= 1)
@@ -78,7 +76,7 @@ void kenji::AOClient::cmdUnCM(int argc, QStringList argv)
       QList<theory::PlayerId> owners = l_area->owners();
       for (theory::PlayerId uid : owners)
       {
-        if (uid != playerId())
+        if (uid != id)
         {
           l_area->removeOwner(uid);
           AOClient *l_target = server->getClientByID(uid);
@@ -89,8 +87,6 @@ void kenji::AOClient::cmdUnCM(int argc, QStringList argv)
         }
       }
       sendServerMessage("All CMs except yourself have been unCMed.");
-      arup(theory::AreaUpdatePacket::Locked, true);
-      arup(theory::AreaUpdatePacket::Ownership, true);
       return;
     }
 
@@ -121,12 +117,7 @@ void kenji::AOClient::cmdUnCM(int argc, QStringList argv)
     return;
   }
 
-  if (l_area->removeOwner(l_uid))
-  {
-    arup(theory::AreaUpdatePacket::Locked, true);
-  }
-
-  arup(theory::AreaUpdatePacket::Ownership, true);
+  l_area->removeOwner(l_uid);
 }
 
 void kenji::AOClient::cmdInvite(int argc, QStringList argv)
@@ -208,10 +199,9 @@ void kenji::AOClient::cmdLock(int argc, QStringList argv)
   {
     if (l_client->areaId() == areaId())
     {
-      area->invite(l_client->playerId());
+      area->invite(l_client->id);
     }
   }
-  arup(theory::AreaUpdatePacket::Locked, true);
 }
 
 void kenji::AOClient::cmdSpectatable(int argc, QStringList argv)
@@ -232,10 +222,9 @@ void kenji::AOClient::cmdSpectatable(int argc, QStringList argv)
   {
     if (l_client->areaId() == areaId())
     {
-      l_area->invite(l_client->playerId());
+      l_area->invite(l_client->id);
     }
   }
-  arup(theory::AreaUpdatePacket::Locked, true);
 }
 
 void kenji::AOClient::cmdUnLock(int argc, QStringList argv)
@@ -251,7 +240,6 @@ void kenji::AOClient::cmdUnLock(int argc, QStringList argv)
   }
   sendServerMessageArea("This area is now unlocked.");
   l_area->unlock();
-  arup(theory::AreaUpdatePacket::Locked, true);
 }
 
 void kenji::AOClient::cmdGetAreas(int argc, QStringList argv)
@@ -326,12 +314,12 @@ void kenji::AOClient::cmdAreaKick(int argc, QStringList argv)
     const QList<AOClient *> l_clients = server->getClients();
     for (AOClient *l_client : l_clients)
     {
-      if (l_client->areaId() == areaId() && l_client->playerId() != playerId())
+      if (l_client->areaId() == areaId() && l_client->id != id)
       {
-        if (!server->getAreaById(areaId())->owners().contains(l_client->playerId()))
+        if (!server->getAreaById(areaId())->owners().contains(l_client->id))
         {
           l_client->changeArea(target_area_id);
-          l_area->uninvite(l_client->playerId());
+          l_area->uninvite(l_client->id);
           l_client->sendServerMessage("You have been kicked to area " + target_area->displayName() + ".");
         }
       }
@@ -365,7 +353,7 @@ void kenji::AOClient::cmdAreaKick(int argc, QStringList argv)
     return;
   }
   l_client_to_kick->changeArea(target_area_id);
-  l_area->uninvite(l_client_to_kick->playerId());
+  l_area->uninvite(l_client_to_kick->id);
   l_client_to_kick->sendServerMessage("You have been kicked to area " + target_area->displayName() + ".");
   sendServerMessage("Client " + argv[0] + " kicked to area " + target_area->displayName() + ".");
 }
@@ -378,7 +366,7 @@ void kenji::AOClient::cmdSetBackground(int argc, QStringList argv)
   AreaData *area = server->getAreaById(areaId());
   if (m_authenticated || !area->bgLocked())
   {
-    if (area->lockStatus() == theory::AreaLockStatus::Spectatable && !area->invited().contains(playerId()) && !checkPermission(ACLRole::BYPASS_LOCKS))
+    if (area->lockStatus() == theory::AreaLockStatus::Spectatable && !area->invited().contains(id) && !checkPermission(ACLRole::BYPASS_LOCKS))
     {
       sendServerMessage("Spectators are blocked from changing the background.");
       return;
@@ -506,7 +494,6 @@ void kenji::AOClient::cmdStatus(int argc, QStringList argv)
   }
 
   l_area->changeStatus(l_status);
-  arup(theory::AreaUpdatePacket::Status, true);
   sendServerMessageArea(m_character.toString() + " changed status to " + l_arg);
 }
 
