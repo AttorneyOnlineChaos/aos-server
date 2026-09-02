@@ -59,6 +59,8 @@ qt_add_library(kenji STATIC
   src/broadcaster.h
   src/command_extension.cpp
   src/command_extension.h
+  src/command_utils.cpp
+  src/command_utils.h
   src/config_manager.cpp
   src/config_manager.h
   src/connection.cpp

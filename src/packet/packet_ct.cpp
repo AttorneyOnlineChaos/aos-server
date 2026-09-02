@@ -1,5 +1,6 @@
 #include "ao_client.h"
 
+#include "command_utils.h"
 #include "config_manager.h"
 #include "server.h"
 
@@ -51,14 +52,18 @@ void kenji::AOClient::process(const theory::OocMessagePacket &packet)
 
   if (l_message.at(0) == '/')
   {
-    QStringList l_cmd_argv = l_message.split(" ", Qt::SkipEmptyParts);
-    QString l_command = l_cmd_argv[0].trimmed().toLower();
+    std::optional<QStringList> l_cmd_argv = CommandParser::parseCommand(l_message);
+    if (!l_cmd_argv)
+    {
+      sendServerMessage("Invalid command syntax.");
+      return;
+    }
+    QString l_command = l_cmd_argv->takeFirst().trimmed().toLower();
     l_command = l_command.right(l_command.length() - 1);
-    l_cmd_argv.removeFirst();
-    int l_cmd_argc = l_cmd_argv.length();
+    int l_cmd_argc = l_cmd_argv->length();
 
-    handleCommand(l_command, l_cmd_argc, l_cmd_argv);
-    m_logger.logCMD((m_character.toString() + " " + characterName().value_or(QString())), m_ipid, name(), l_command, l_cmd_argv, server->getAreaById(areaId())->name());
+    handleCommand(l_command, l_cmd_argc, l_cmd_argv.value());
+    m_logger.logCMD((m_character.toString() + " " + characterName().value_or(QString())), m_ipid, name(), l_command, l_cmd_argv.value(), server->getAreaById(areaId())->name());
     return;
   }
   else

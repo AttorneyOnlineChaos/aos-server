@@ -613,6 +613,7 @@ public:
    * @see #m_currentMusic
    */
   std::optional<QString> currentMusic() const;
+  int currentMusicSample() const;
 
   /**
    * @brief Sets the music currently being played in the area.
@@ -621,7 +622,7 @@ public:
    *
    * @see #m_currentMusic
    */
-  void setCurrentMusic(const std::optional<QString> &f_current_song);
+  void setCurrentMusic(const std::optional<QString> &f_current_song, int f_sample);
 
   /**
    * @brief Sets the ambience audio being played in the area.
@@ -1053,6 +1054,7 @@ private:
    * `base/sounds/music/` clientside, with file extension.
    */
   std::optional<QString> m_currentMusic;
+  int m_currentMusicSample = 0;
 
   /**
    * @brief See m_currentMusic, but for ambience.

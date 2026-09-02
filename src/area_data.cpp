@@ -114,6 +114,7 @@ void kenji::AreaData::addClient(theory::CharacterId f_charId, theory::PlayerId f
   // We auto-loop this so you'll never sit in silence unless wanted.
   theory::MusicChangedPacket l_music;
   l_music.track = m_currentMusic;
+  l_music.sample = m_currentMusicSample;
   l_music.channel = theory::MusicChannel::Music;
   l_music.loop = true;
   m_broadcaster.broadcastToPlayer(l_music, f_userId);
@@ -567,9 +568,15 @@ std::optional<QString> kenji::AreaData::currentMusic() const
   return m_currentMusic;
 }
 
-void kenji::AreaData::setCurrentMusic(const std::optional<QString> &f_current_song)
+int kenji::AreaData::currentMusicSample() const
+{
+  return m_currentMusicSample;
+}
+
+void kenji::AreaData::setCurrentMusic(const std::optional<QString> &f_current_song, int f_sample)
 {
   m_currentMusic = f_current_song;
+  m_currentMusicSample = f_sample;
 }
 
 int kenji::AreaData::proHP() const
@@ -735,7 +742,7 @@ QString kenji::AreaData::addJukeboxSong(const QString &f_song)
         l_music_change.channel = theory::MusicChannel::Music;
         m_broadcaster.broadcastToArea(l_music_change, index());
         m_jukebox_timer->start(l_song->length * 1000);
-        setCurrentMusic(f_song);
+        setCurrentMusic(f_song, 0);
       }
       m_jukebox_queue.append(f_song);
       return "Song added to Jukebox.";
@@ -782,11 +789,11 @@ void kenji::AreaData::switchJukeboxSong()
   if (l_song && l_song->length > 0)
   {
     m_jukebox_timer->start(l_song->length * 1000);
-    setCurrentMusic(l_song->fileName);
+    setCurrentMusic(l_song->fileName, 0);
     return;
   }
 
-  setCurrentMusic(std::nullopt);
+  setCurrentMusic(std::nullopt, 0);
 }
 
 void kenji::AreaData::allowMessage()

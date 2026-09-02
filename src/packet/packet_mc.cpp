@@ -64,6 +64,7 @@ void kenji::AOClient::process(const theory::PlayMusicPacket &packet)
 
   theory::MusicChangedPacket l_music_change;
   l_music_change.track = l_final_track;
+  l_music_change.sample = packet.sample;
   l_music_change.character = m_character;
   l_music_change.characterName = characterName();
   l_music_change.channel = theory::MusicChannel::Music;
@@ -73,7 +74,7 @@ void kenji::AOClient::process(const theory::PlayMusicPacket &packet)
 
   m_logger.logMusic((m_character.toString() + " " + characterName().value_or(QString())), name(), m_ipid, l_area->name(), l_final_track.value_or(QString()));
 
-  l_area->setCurrentMusic(l_final_track);
+  l_area->setCurrentMusic(l_final_track, packet.sample);
 }
 
 void kenji::AOClient::process(const theory::ChangeAreaPacket &packet)

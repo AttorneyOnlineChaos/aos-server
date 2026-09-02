@@ -268,8 +268,8 @@
       "names": [
          "play"
       ],
-      "usage":"/play <Song>",
-      "text":"Plays music in the area. Can play either a local file or a URL."
+      "usage":"/play <Song> [Sample]",
+      "text":"Plays music in the area. Can play either a local file or a URL. An optional index selects which sample of the track to play, if omitted the first sample is the default."
    },
    {
       "names": [

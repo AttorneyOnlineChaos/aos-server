@@ -10,8 +10,24 @@
 
 void kenji::AOClient::cmdPlay(int argc, QStringList argv)
 {
-  Q_UNUSED(argc);
   QString l_song = argv.join(" ");
+  int l_sample = 0;
+  if (argc >= 2)
+  {
+    bool l_ok = false;
+    const int l_number = argv.last().toInt(&l_ok);
+    if (l_ok)
+    {
+      if (l_number < 1)
+      {
+        sendServerMessage("Invalid sample number.");
+        return;
+      }
+      argv.removeLast();
+      l_song = argv.join(" ");
+      l_sample = l_number - 1;
+    }
+  }
   if (m_is_dj_blocked)
   {
     sendServerMessage("You are blocked from changing the music.");
@@ -40,9 +56,10 @@ void kenji::AOClient::cmdPlay(int argc, QStringList argv)
     l_final_track = l_song;
   }
 
-  l_area->setCurrentMusic(l_final_track);
+  l_area->setCurrentMusic(l_final_track, l_sample);
   theory::MusicChangedPacket l_music_change;
   l_music_change.track = l_final_track;
+  l_music_change.sample = l_sample;
   l_music_change.character = m_character;
   l_music_change.characterName = characterName();
   l_music_change.channel = theory::MusicChannel::Music;
