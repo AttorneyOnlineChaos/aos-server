@@ -12,6 +12,12 @@
 
 void kenji::AOClient::process(const theory::IcMessagePacket &packet)
 {
+  if (packet.playerId != theory::NoPlayerId)
+  {
+    drop(theory::ErrorPacket::ProtocolError);
+    return;
+  }
+
   AreaData *l_area = server->getAreaById(areaId());
 
   if (m_is_muted)
@@ -52,6 +58,7 @@ void kenji::AOClient::process(const theory::IcMessagePacket &packet)
     }
   }
 
+  l_message.playerId = playerId();
   server->broadcastToArea(l_message, areaId());
 
   m_logger.logIC(l_area->name(), m_ipid, name(), QString::number(playerId()), (m_character.toString() + " " + characterName().value_or(QString())), m_last_message);
@@ -296,7 +303,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
   }
 
   // additive
-  if (l_area->lastICMessage().character != m_character)
+  if (l_area->lastICMessage().playerId != playerId())
   {
     l_message.additive = false;
   }

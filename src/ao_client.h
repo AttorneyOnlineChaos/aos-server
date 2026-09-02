@@ -525,7 +525,7 @@ public Q_SLOTS:
   /**
    * @overload Sends the reason to the client, then disconnects them.
    */
-  void drop(theory::ErrorPacket::Code code, const QString &reason);
+  void drop(theory::ErrorPacket::Code code, const QString &reason = QString());
 
   /**
    * @brief A slot for sending a packet to the client.
