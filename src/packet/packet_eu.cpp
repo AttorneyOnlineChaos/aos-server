@@ -24,6 +24,11 @@ void kenji::AOClient::process(const theory::EvidenceUpdatePacket &packet)
         drop(theory::ErrorPacket::ProtocolError);
         break;
       }
+      if (const auto error = verifyEvidence(asset))
+      {
+        drop(theory::ErrorPacket::ProtocolError, error->toString());
+        break;
+      }
       m_inventories.setEvidence(packet.evidenceId, asset);
       break;
     }

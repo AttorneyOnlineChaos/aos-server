@@ -76,7 +76,7 @@ kenji::AOClient *kenji::AOClientRegistry::create(const theory::Shared<theory::Ca
     return nullptr;
   }
 
-  const theory::PlayerId id = _ids.acquire();
+  const theory::PlayerId id = _ids.next();
   const theory::InventoryId inventoryId = _inventories.add(theory::makeShared<ClientInventoryHandle>(id, _server));
   AOClient *client = new AOClient(&_server, _logger, _inventories, socket, address, this, id, inventoryId, &_musicManager);
   _clients.insert(id, client);
@@ -94,7 +94,6 @@ void kenji::AOClientRegistry::remove(AOClient *client)
   Q_EMIT aboutToRemoveClient(client->id);
   _clients.remove(client->id);
   _inventories.remove(client->inventoryId);
-  _ids.release(client->id);
   Q_EMIT clientRemoved(client->id);
   client->deleteLater();
 }

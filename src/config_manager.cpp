@@ -499,46 +499,70 @@ int kenji::ConfigManager::maxNameLength()
 {
   bool ok;
   int l_max = self->m_settings.value("Options/maximum_name_length", 30).toInt(&ok);
-  if (!ok)
+  if (!ok || l_max <= 0)
   {
-    zWarning(log::config) << "maximum_name_length is not an int!";
+    zWarning(log::config) << "maximum_name_length is not a positive int!";
     l_max = 30;
   }
   return l_max;
 }
 
-int kenji::ConfigManager::maxIcNameLength()
+int kenji::ConfigManager::maxCharacterNameLength()
 {
   bool ok;
   int l_max = self->m_settings.value("Options/maximum_ic_name_length", 30).toInt(&ok);
-  if (!ok)
+  if (!ok || l_max <= 0)
   {
-    zWarning(log::config) << "maximum_ic_name_length is not an int!";
+    zWarning(log::config) << "maximum_ic_name_length is not a positive int!";
     l_max = 30;
   }
   return l_max;
 }
 
-int kenji::ConfigManager::maxTextLength()
+int kenji::ConfigManager::maxMessageLength()
 {
   bool ok;
   int l_max = self->m_settings.value("Options/maximum_text_length", 256).toInt(&ok);
-  if (!ok)
+  if (!ok || l_max <= 0)
   {
-    zWarning(log::config) << "maximum_text_length is not an int!";
+    zWarning(log::config) << "maximum_text_length is not a positive int!";
     l_max = 256;
   }
   return l_max;
 }
 
-int kenji::ConfigManager::maxIcTextLength()
+int kenji::ConfigManager::maxIcMessageLength()
 {
   bool ok;
   int l_max = self->m_settings.value("Options/maximum_ic_text_length", 256).toInt(&ok);
-  if (!ok)
+  if (!ok || l_max <= 0)
   {
-    zWarning(log::config) << "maximum_ic_text_length is not an int!";
+    zWarning(log::config) << "maximum_ic_text_length is not a positive int!";
     l_max = 256;
+  }
+  return l_max;
+}
+
+int kenji::ConfigManager::maxEvidenceNameLength()
+{
+  bool ok;
+  int l_max = self->m_settings.value("Options/maximum_evidence_name_length", 30).toInt(&ok);
+  if (!ok || l_max <= 0)
+  {
+    zWarning(log::config) << "maximum_evidence_name_length is not a positive int!";
+    l_max = 30;
+  }
+  return l_max;
+}
+
+int kenji::ConfigManager::maxEvidenceDescriptionLength()
+{
+  bool ok;
+  int l_max = self->m_settings.value("Options/maximum_evidence_description_length", 1024).toInt(&ok);
+  if (!ok || l_max <= 0)
+  {
+    zWarning(log::config) << "maximum_evidence_description_length is not a positive int!";
+    l_max = 1024;
   }
   return l_max;
 }

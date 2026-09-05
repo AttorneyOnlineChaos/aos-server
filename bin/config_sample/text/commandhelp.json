@@ -705,6 +705,14 @@
    },
    {
       "names": [
+         "allowplay",
+         "allow_play"
+      ],
+      "usage":"/allowplay",
+      "text":"Toggles whathever players who are not CM can use /play in the current area. This command takes no arguments."
+   },
+   {
+      "names": [
          "a"
       ],
       "usage":"/a <Area> <Message>",

@@ -77,7 +77,7 @@ void kenji::AOClient::cmdPlayAmbience(int argc, QStringList argv)
     return;
   }
   AreaData *l_area = server->getAreaById(areaId());
-  if (!l_area->owners().contains(id) && !l_area->isPlayEnabled())
+  if (!l_area->owners().contains(id) && !l_area->isAmbiencePlayEnabled())
   { // Make sure we have permission to play music
     sendServerMessage("Free ambience play is disabled in this area.");
     return;
@@ -193,6 +193,17 @@ void kenji::AOClient::cmdToggleMusic(int argc, QStringList argv)
   l_area->toggleMusic();
   QString l_state = l_area->isMusicAllowed() ? "allowed." : "disallowed.";
   sendServerMessage("Music in this area is now " + l_state);
+}
+
+void kenji::AOClient::cmdAllowPlay(int argc, QStringList argv)
+{
+  Q_UNUSED(argc);
+  Q_UNUSED(argv);
+
+  AreaData *l_area = server->getAreaById(areaId());
+  l_area->togglePlay();
+  QString l_state = l_area->isPlayEnabled() ? "enabled." : "disabled.";
+  sendServerMessageArea("Free music play in this area is now " + l_state);
 }
 
 void kenji::AOClient::cmdToggleJukebox(int argc, QStringList argv)

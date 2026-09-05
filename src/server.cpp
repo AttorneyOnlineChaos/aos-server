@@ -19,6 +19,7 @@
 #include "protocol/packets/moderation_packets.h"
 #include "protocol/protocol_info.h"
 #include "protocol/server_info.h"
+#include "protocol/server_settings.h"
 #include "server_publisher.h"
 
 #include <QCryptographicHash>
@@ -291,15 +292,31 @@ QHttpServerResponse kenji::Server::serverInfoResponse(const QHttpServerRequest &
   l_info.softwareVersion = softwareVersion();
   l_info.protocolName = theory::protocolName();
   l_info.protocolVersion = theory::protocolVersion();
-  const QUrl l_asset_url = ConfigManager::assetUrl();
-  if (l_asset_url.isValid())
-  {
-    l_info.assetUrl = QString::fromUtf8(l_asset_url.toEncoded(QUrl::EncodeSpaces));
-  }
   l_info.playerCount = m_player_count;
   l_info.maxPlayers = ConfigManager::maxPlayers();
 
   return QHttpServerResponse(theory::encodeJson(l_info).toObject());
+}
+
+theory::ServerSettings kenji::Server::serverSettings() const
+{
+  theory::ServerSettings l_settings;
+  l_settings.name = ConfigManager::serverNickname();
+  const QUrl l_asset_url = ConfigManager::assetUrl();
+  if (l_asset_url.isValid())
+  {
+    l_settings.assetUrl = QString::fromUtf8(l_asset_url.toEncoded(QUrl::EncodeSpaces));
+  }
+  l_settings.messageOfTheDay = ConfigManager::motd();
+  l_settings.maxNameLength = ConfigManager::maxNameLength();
+  l_settings.maxMessageLength = ConfigManager::maxMessageLength();
+  l_settings.maxCharacterNameLength = ConfigManager::maxCharacterNameLength();
+  l_settings.maxIcMessageLength = ConfigManager::maxIcMessageLength();
+  l_settings.maxEvidenceNameLength = ConfigManager::maxEvidenceNameLength();
+  l_settings.maxEvidenceDescriptionLength = ConfigManager::maxEvidenceDescriptionLength();
+  l_settings.maxInventorySize = ConfigManager::maxInventorySize();
+  l_settings.maxPersonalInventorySize = ConfigManager::maxPersonalInventorySize();
+  return l_settings;
 }
 
 bool kenji::Server::isMessageAllowed() const

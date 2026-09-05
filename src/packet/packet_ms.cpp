@@ -115,7 +115,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
   }
 
   // message text
-  if (packet.message.size() > ConfigManager::maxIcTextLength())
+  if (packet.message.size() > ConfigManager::maxIcMessageLength())
   {
     return std::nullopt;
   }
@@ -236,9 +236,9 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
     sendServerMessage("Shownames are not allowed in this area!");
     return std::nullopt;
   }
-  if (l_incoming_showname && l_incoming_showname->length() > ConfigManager::maxIcNameLength())
+  if (l_incoming_showname && l_incoming_showname->length() > ConfigManager::maxCharacterNameLength())
   {
-    sendServerMessage("Your showname is too long! Please limit it to under " + QString::number(ConfigManager::maxIcNameLength()) + " characters");
+    sendServerMessage("Your showname is too long! Please limit it to under " + QString::number(ConfigManager::maxCharacterNameLength()) + " characters");
     return std::nullopt;
   }
 

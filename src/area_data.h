@@ -232,6 +232,8 @@ public:
    * @see #m_playcmd
    */
   bool isPlayEnabled() const;
+  void togglePlay();
+  bool isAmbiencePlayEnabled() const;
 
   /**
    * @brief Locks the area, setting it to LOCKED.
@@ -1014,6 +1016,7 @@ private:
    * @brief Whether or not /play can be used without CM.
    */
   bool m_playcmd;
+  bool m_playcmd_default;
 
   /**
    * @brief Timer until the next IC message can be sent.

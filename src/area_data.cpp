@@ -50,6 +50,7 @@ kenji::AreaData::AreaData(const QString &p_name, theory::AreaId p_index, theory:
   m_ignoreBgList = areas_ini->value("ignore_bglist", "false").toBool();
   m_jukebox = areas_ini->value("jukebox_enabled", "false").toBool();
   m_playcmd = areas_ini->value("playcmd_enabled", "false").toBool();
+  m_playcmd_default = m_playcmd;
   m_can_send_wtce = areas_ini->value("wtce_enabled", "true").toBool();
   m_can_use_shouts = areas_ini->value("shouts_enabled", "true").toBool();
   areas_ini->endGroup();
@@ -136,6 +137,10 @@ bool kenji::AreaData::removeOwner(theory::PlayerId f_clientId)
   m_invited.removeAll(f_clientId);
   if (l_removed)
   {
+    if (m_owners.isEmpty())
+    {
+      m_playcmd = m_playcmd_default;
+    }
     Q_EMIT ownersChanged();
   }
 
@@ -181,6 +186,16 @@ int kenji::AreaData::getJukeboxQueueSize() const
 bool kenji::AreaData::isPlayEnabled() const
 {
   return m_playcmd;
+}
+
+void kenji::AreaData::togglePlay()
+{
+  m_playcmd = !m_playcmd;
+}
+
+bool kenji::AreaData::isAmbiencePlayEnabled() const
+{
+  return m_playcmd_default;
 }
 
 void kenji::AreaData::lock()

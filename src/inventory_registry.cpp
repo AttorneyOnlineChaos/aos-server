@@ -6,7 +6,7 @@ kenji::InventoryRegistry::InventoryRegistry(QObject *parent)
 
 theory::InventoryId kenji::InventoryRegistry::add(const theory::Shared<InventoryHandle> &handle)
 {
-  const theory::InventoryId inventoryId = _ids.acquire();
+  const theory::InventoryId inventoryId = _ids.next();
   _inventories.insert(inventoryId, Entry{{}, handle});
   Q_EMIT added(inventoryId);
   return inventoryId;
@@ -21,7 +21,6 @@ void kenji::InventoryRegistry::remove(theory::InventoryId inventoryId)
     discard(evidenceId);
   }
   Q_EMIT removed(inventoryId);
-  _ids.release(inventoryId);
 }
 
 bool kenji::InventoryRegistry::contains(theory::InventoryId inventoryId) const
@@ -177,7 +176,7 @@ bool kenji::InventoryRegistry::setEvidenceRevealed(theory::EvidenceId evidenceId
 theory::EvidenceId kenji::InventoryRegistry::create(theory::InventoryId inventoryId, const theory::Evidence &asset)
 {
   const auto contents = _inventories.find(inventoryId);
-  const theory::EvidenceId evidenceId = _ids.acquire();
+  const theory::EvidenceId evidenceId = _ids.next();
   _evidence.insert(evidenceId, asset);
   _owners.insert(evidenceId, inventoryId);
   contents->items.append(evidenceId);
@@ -188,5 +187,4 @@ void kenji::InventoryRegistry::discard(theory::EvidenceId evidenceId)
 {
   _evidence.remove(evidenceId);
   _owners.remove(evidenceId);
-  _ids.release(evidenceId);
 }

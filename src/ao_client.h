@@ -542,6 +542,7 @@ private:
   void process(const theory::ModActionPacket &packet);
 
   std::optional<theory::IcMessagePacket> validateIcMessage(const theory::IcMessagePacket &packet);
+  static std::optional<theory::VerifyError> verifyEvidence(const theory::Evidence &evidence);
 
   /**
    * @brief The ID of the area the client is currently in.
@@ -1789,6 +1790,8 @@ private:
    * @details No arguments.
    */
   void cmdToggleMusic(int argc, QStringList argv);
+
+  void cmdAllowPlay(int argc, QStringList argv);
 
   /**
    * @brief Toggles jukebox status in the current area.

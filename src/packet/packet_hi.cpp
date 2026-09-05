@@ -1,7 +1,6 @@
 #include "ao_client.h"
 
 #include "area_data.h"
-#include "config_manager.h"
 #include "server.h"
 
 void kenji::AOClient::shipSnapshot()
@@ -12,6 +11,10 @@ void kenji::AOClient::shipSnapshot()
   }
 
   AreaData *l_area = server->getAreaById(areaId());
+
+  theory::ServerSettingsPacket l_settings;
+  l_settings.settings = server->serverSettings();
+  shipPacket(l_settings);
 
   sendCharacterList();
 
@@ -34,8 +37,6 @@ void kenji::AOClient::shipSnapshot()
   l_background.side = l_area->side();
   l_background.display = true;
   shipPacket(l_background);
-
-  sendServerMessage("=== MOTD ===\r\n" + ConfigManager::motd() + "\r\n=============");
 
   server->shipGlobalTimer(id);
   l_area->shipTimers(id);

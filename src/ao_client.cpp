@@ -108,6 +108,7 @@ const QMap<QString, kenji::AOClient::CommandInfo> kenji::AOClient::COMMANDS{
     {"charselect", {{ACLRole::NONE}, 0, &AOClient::cmdCharSelect}},
     {"force_charselect", {{ACLRole::FORCE_CHARSELECT}, 1, &AOClient::cmdForceCharSelect}},
     {"togglemusic", {{ACLRole::CM}, 0, &AOClient::cmdToggleMusic}},
+    {"allow_play", {{ACLRole::CM}, 0, &AOClient::cmdAllowPlay}},
     {"a", {{ACLRole::NONE}, 2, &AOClient::cmdA}},
     {"s", {{ACLRole::NONE}, 0, &AOClient::cmdS}},
     {"kick_uid", {{ACLRole::KICK}, 2, &AOClient::cmdKickUid}},
@@ -276,6 +277,19 @@ void kenji::AOClient::registerSessionRoutes()
   m_router.registerRoute<theory::EvidenceUpdatePacket>(&AOClient::process, this);
   m_router.registerRoute<theory::ModCallPacket>(&AOClient::process, this);
   m_router.registerRoute<theory::ModActionPacket>(&AOClient::process, this);
+}
+
+std::optional<theory::VerifyError> kenji::AOClient::verifyEvidence(const theory::Evidence &evidence)
+{
+  if (evidence.name.size() > ConfigManager::maxEvidenceNameLength())
+  {
+    return theory::VerifyError::outOfRange(QStringLiteral("name: %1 characters, limit %2").arg(evidence.name.size()).arg(ConfigManager::maxEvidenceNameLength()));
+  }
+  if (evidence.description.size() > ConfigManager::maxEvidenceDescriptionLength())
+  {
+    return theory::VerifyError::outOfRange(QStringLiteral("description: %1 characters, limit %2").arg(evidence.description.size()).arg(ConfigManager::maxEvidenceDescriptionLength()));
+  }
+  return theory::NoVerifyError;
 }
 
 void kenji::AOClient::changeArea(theory::AreaId new_area)

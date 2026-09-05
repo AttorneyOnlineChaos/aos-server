@@ -9,13 +9,13 @@ namespace kenji
 class ClientInventoryHandle : public InventoryHandle
 {
 public:
-  ClientInventoryHandle(theory::PlayerId owner, const Server &server);
+  ClientInventoryHandle(theory::PlayerId owner, Server &server);
 
   theory::InventoryPermission permission(theory::PlayerId playerId) const override;
   int capacity() const override;
 
 private:
   theory::PlayerId _owner;
-  const Server &_server;
+  Server &_server;
 };
 } // namespace kenji

@@ -8,6 +8,15 @@ void kenji::AOClient::process(const theory::InventoryTransferPacket &packet)
     return;
   }
 
+  for (const theory::Evidence &evidence : packet.list)
+  {
+    if (const auto error = verifyEvidence(evidence))
+    {
+      drop(theory::ErrorPacket::ProtocolError, error->toString());
+      return;
+    }
+  }
+
   const int limit = m_inventories.capacity(packet.inventoryId);
   int held = 0;
   if (packet.mode == theory::InventoryTransferPacket::Append)

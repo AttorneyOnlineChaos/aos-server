@@ -152,17 +152,20 @@ public:
   /**
    * @brief Returns the maximum number of characters a character name (showname) can contain.
    */
-  static int maxIcNameLength();
+  static int maxCharacterNameLength();
 
   /**
    * @brief Returns the maximum number of characters an OOC message can contain.
    */
-  static int maxTextLength();
+  static int maxMessageLength();
 
   /**
    * @brief Returns the maximum number of characters an IC message can contain.
    */
-  static int maxIcTextLength();
+  static int maxIcMessageLength();
+
+  static int maxEvidenceNameLength();
+  static int maxEvidenceDescriptionLength();
 
   static int maxInventorySize();
   static int maxPersonalInventorySize();

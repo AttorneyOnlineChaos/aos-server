@@ -36,7 +36,7 @@ void kenji::AOClient::process(const theory::OocMessagePacket &packet)
 
   QString l_message = dezalgo(packet.message);
 
-  if (l_message.length() == 0 || l_message.length() > ConfigManager::maxTextLength())
+  if (l_message.length() == 0 || l_message.length() > ConfigManager::maxMessageLength())
   {
     return;
   }

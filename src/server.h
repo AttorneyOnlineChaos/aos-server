@@ -19,6 +19,7 @@
 #include "music_manager.h"
 #include "network/packet.h"
 #include "network/packet_factory.h"
+#include "protocol/server_settings.h"
 #include "server_publisher.h"
 #include "session_registry.h"
 #include "timer.h"
@@ -267,6 +268,8 @@ public:
 
   bool personalInventoriesEnabled() const;
   void setPersonalInventoriesEnabled(bool enabled);
+
+  theory::ServerSettings serverSettings() const;
 
   /**
    * @brief Attempts to parse a IPv6 mapped IPv4 to an IPv4.
