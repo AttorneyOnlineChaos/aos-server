@@ -78,7 +78,17 @@ kenji::ClientGameObserver::ClientGameObserver(AOClient &viewer, AOClientRegistry
 bool kenji::ClientGameObserver::isEvidenceVisible(theory::InventoryId inventoryId, const theory::Evidence &evidence) const
 {
   const theory::InventoryPermission permission = _inventories.hasPermission(inventoryId, _viewer.id);
-  return permission >= theory::InventoryPermission::Edit || (permission >= theory::InventoryPermission::View && evidence.revealed && isInventoryReachable(inventoryId));
+  if (permission >= theory::InventoryPermission::Edit)
+  {
+    return true;
+  }
+  if (permission < theory::InventoryPermission::View || !isInventoryReachable(inventoryId))
+  {
+    return false;
+  }
+  // TODO MUST be removed when party system is implemented
+  const bool personal = _server.getAreaById(_viewer.areaId())->inventoryId != inventoryId;
+  return evidence.revealed || personal;
 }
 
 void kenji::ClientGameObserver::connectClient(AOClient *client)
