@@ -19,7 +19,7 @@ theory::InventoryPermission kenji::ClientInventoryHandle::permission(theory::Pla
   {
     return theory::InventoryPermission::Edit;
   }
-  // TODO: this is a temporary solution, once parties are rolling out this new rule must be removed
+  // TODO This is a temporary bandaid that needs to be removed when the party system is implemented. Chop chop!
   AOClient *owner = _server.getClientByID(_owner);
   AOClient *viewer = _server.getClientByID(playerId);
   if (!owner || !viewer || owner->areaId() != viewer->areaId())

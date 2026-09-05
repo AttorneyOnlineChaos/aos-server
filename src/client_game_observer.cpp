@@ -86,7 +86,7 @@ bool kenji::ClientGameObserver::isEvidenceVisible(theory::InventoryId inventoryI
   {
     return false;
   }
-  // TODO MUST be removed when party system is implemented
+  // TODO This is a temporary bandaid that needs to be removed when the party system is implemented. Chop chop!
   const bool personal = _server.getAreaById(_viewer.areaId())->inventoryId != inventoryId;
   return evidence.revealed || personal;
 }
