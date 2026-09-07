@@ -60,6 +60,7 @@ void kenji::AOClient::cmdPlay(int argc, QStringList argv)
   theory::MusicChangedPacket l_music_change;
   l_music_change.track = l_final_track;
   l_music_change.sample = l_sample;
+  l_music_change.playerId = id;
   l_music_change.character = m_character;
   l_music_change.characterName = characterName();
   l_music_change.channel = theory::MusicChannel::Music;
@@ -97,6 +98,7 @@ void kenji::AOClient::cmdPlayAmbience(int argc, QStringList argv)
   l_area->setAmbience(l_final_track);
   theory::MusicChangedPacket l_music_change;
   l_music_change.track = l_final_track;
+  l_music_change.playerId = id;
   l_music_change.character = theory::NoCharacterId;
   l_music_change.characterName = characterName();
   l_music_change.channel = theory::MusicChannel::Ambient;
