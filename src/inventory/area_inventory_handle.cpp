@@ -13,6 +13,7 @@ theory::InventoryPermission kenji::AreaInventoryHandle::permission(theory::Playe
   {
     return theory::InventoryPermission::Edit;
   }
+
   return theory::InventoryPermission::View;
 }
 

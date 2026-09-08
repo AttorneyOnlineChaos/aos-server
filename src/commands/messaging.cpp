@@ -52,12 +52,14 @@ void kenji::AOClient::cmdForcePos(int argc, QStringList argv)
       }
     }
   }
+
   for (AOClient *l_target : l_targets)
   {
     l_target->sendServerMessage("Position forcibly changed by CM.");
     l_target->changePosition(argv[0]);
     l_forced_clients++;
   }
+
   sendServerMessage("Forced " + QString::number(l_forced_clients) + " into pos " + argv[0] + ".");
 }
 
@@ -101,6 +103,7 @@ void kenji::AOClient::cmdSwitch(int argc, QStringList argv)
     sendServerMessage("That does not look like a valid character.");
     return;
   }
+
   if (!changeCharacter(l_selected_char_id))
   {
     sendServerMessage("The character you picked is either taken or invalid.");
@@ -118,11 +121,13 @@ void kenji::AOClient::cmdRandomChar(int argc, QStringList argv)
   {
     l_available.removeOne(l_taken_char);
   }
+
   if (l_available.isEmpty())
   {
     sendServerMessage("There are no available characters.");
     return;
   }
+
   changeCharacter(l_available.at(genRand(0, l_available.size() - 1)));
 }
 
@@ -147,17 +152,20 @@ void kenji::AOClient::cmdPM(int argc, QStringList argv)
     sendServerMessage("That does not look like a valid ID.");
     return;
   }
+
   AOClient *l_target_client = server->getClientByID(l_target_id);
   if (l_target_client == nullptr)
   {
     sendServerMessage("No client with that ID found.");
     return;
   }
+
   if (l_target_client->m_pm_mute)
   {
     sendServerMessage("That user is not recieving PMs.");
     return;
   }
+
   QString l_message = argv.join(" "); //...which means it will not end up as part of the message
   l_target_client->sendServerMessage("Message from " + name() + " (" + QString::number(id) + "): " + l_message);
   sendServerMessage("PM sent to " + QString::number(l_target_id) + ". Message: " + l_message);
@@ -236,6 +244,7 @@ void kenji::AOClient::cmdGimp(int argc, QStringList argv)
     sendServerMessage("Gimped player.");
     l_target->sendServerMessage("You have been gimped! " + getReprimand());
   }
+
   l_target->m_is_gimped = true;
 }
 
@@ -268,6 +277,7 @@ void kenji::AOClient::cmdUnGimp(int argc, QStringList argv)
     sendServerMessage("Ungimped player.");
     l_target->sendServerMessage("A moderator has ungimped you! " + getReprimand(true));
   }
+
   l_target->m_is_gimped = false;
 }
 
@@ -300,6 +310,7 @@ void kenji::AOClient::cmdDisemvowel(int argc, QStringList argv)
     sendServerMessage("Disemvoweled player.");
     l_target->sendServerMessage("You have been disemvoweled! " + getReprimand());
   }
+
   l_target->m_is_disemvoweled = true;
 }
 
@@ -332,6 +343,7 @@ void kenji::AOClient::cmdUnDisemvowel(int argc, QStringList argv)
     sendServerMessage("Undisemvoweled player.");
     l_target->sendServerMessage("A moderator has undisemvoweled you! " + getReprimand(true));
   }
+
   l_target->m_is_disemvoweled = false;
 }
 
@@ -364,6 +376,7 @@ void kenji::AOClient::cmdShake(int argc, QStringList argv)
     sendServerMessage("Shook player.");
     l_target->sendServerMessage("A moderator has shaken your words! " + getReprimand());
   }
+
   l_target->m_is_shaken = true;
 }
 
@@ -396,6 +409,7 @@ void kenji::AOClient::cmdUnShake(int argc, QStringList argv)
     sendServerMessage("Unshook player.");
     l_target->sendServerMessage("A moderator has unshook you! " + getReprimand(true));
   }
+
   l_target->m_is_shaken = false;
 }
 
@@ -428,6 +442,7 @@ void kenji::AOClient::cmdMedieval(int argc, QStringList argv)
     sendServerMessage("It is done, sire.");
     l_target->sendServerMessage("Forsooth! Thine speech will henceforth be Ye Olde!");
   }
+
   l_target->m_is_medieval = true;
 }
 
@@ -460,6 +475,7 @@ void kenji::AOClient::cmdUnMedieval(int argc, QStringList argv)
     sendServerMessage("Un-medieval'd player.");
     l_target->sendServerMessage("Hark! Thine speech hast been returneth to normal.");
   }
+
   l_target->m_is_medieval = false;
 }
 
@@ -523,6 +539,7 @@ void kenji::AOClient::cmdCharCurse(int argc, QStringList argv)
       sendServerMessage("That player is a spectator!");
       return;
     }
+
     l_target->m_charcurse_list.append(l_target->character());
   }
   else
@@ -539,8 +556,10 @@ void kenji::AOClient::cmdCharCurse(int argc, QStringList argv)
         sendServerMessage("Could not find character: " + l_char_name);
         return;
       }
+
       l_curse_list.append(char_id);
     }
+
     l_target->m_charcurse_list = l_curse_list;
   }
 
@@ -584,6 +603,7 @@ void kenji::AOClient::cmdUnCharCurse(int argc, QStringList argv)
     sendServerMessage("That player is not charcursed!");
     return;
   }
+
   l_target->m_is_charcursed = false;
   l_target->m_charcurse_list.clear();
   l_target->sendCharacterList();
@@ -642,6 +662,7 @@ void kenji::AOClient::cmdA(int argc, QStringList argv)
     sendServerMessage("This does not look like a valid AreaID.");
     return;
   }
+
   if (!l_area->owners().contains(id))
   {
     sendServerMessage("You are not CM in that area.");

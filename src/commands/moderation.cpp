@@ -66,6 +66,7 @@ void kenji::AOClient::cmdBan(int argc, QStringList argv)
       sendServerMessage("Banned user with ipid " + l_ban.ipid + " for reason: " + l_ban.reason);
       l_ban_logged = true;
     }
+
     QString l_ban_duration = l_ban.until();
     int l_ban_id = server->getDatabaseManager()->getBanID(l_ban.ip);
     theory::ErrorPacket l_banned;
@@ -130,6 +131,7 @@ void kenji::AOClient::cmdKick(int argc, QStringList argv)
     {
       m_logger.logKick("Moderator", l_target_ipid);
     }
+
     sendServerMessage("Kicked " + QString::number(l_kick_counter) + " client(s) with ipid " + l_target_ipid + " for reason: " + l_reason);
   }
   else
@@ -156,6 +158,7 @@ void kenji::AOClient::cmdMods(int argc, QStringList argv)
         l_entries << "Moderator: " + l_client->m_moderator_name;
         l_entries << "Role:" << l_client->m_acl_role_id;
       }
+
       l_entries << "OOC name: " + l_client->name();
       l_entries << "ID: " + QString::number(l_client->id);
       l_entries << "Area: " + QString::number(l_client->areaId());
@@ -163,6 +166,7 @@ void kenji::AOClient::cmdMods(int argc, QStringList argv)
       l_online_count++;
     }
   }
+
   l_entries << "---";
   l_entries << "Total online: " << QString::number(l_online_count);
   sendServerMessage(l_entries.join("\n"));
@@ -190,6 +194,7 @@ void kenji::AOClient::cmdCommands(int argc, QStringList argv)
         break;
       }
     }
+
     if (!l_has_permission)
     {
       continue;
@@ -201,8 +206,10 @@ void kenji::AOClient::cmdCommands(int argc, QStringList argv)
     {
       l_info += " [aka: " + l_aliases.join(", ") + "]";
     }
+
     l_entries << l_info;
   }
+
   sendServerMessage(l_entries.join("\n"));
 }
 
@@ -233,6 +240,7 @@ void kenji::AOClient::cmdHelp(int argc, QStringList argv)
         return true;
       }
     }
+
     return false;
   };
 
@@ -260,6 +268,7 @@ void kenji::AOClient::cmdHelp(int argc, QStringList argv)
         l_entries.append(l_format_command(it.key()));
       }
     }
+
     sendServerMessage(l_message + l_entries.join("\n\n"));
     return;
   }
@@ -332,6 +341,7 @@ void kenji::AOClient::cmdBans(int argc, QStringList argv)
     l_recent_bans << l_ban.toString();
     l_recent_bans << "-----";
   }
+
   sendServerMessage(l_recent_bans.join("\n"));
 }
 
@@ -385,6 +395,7 @@ void kenji::AOClient::cmdMute(int argc, QStringList argv)
     sendServerMessage("Muted player.");
     target->sendServerMessage("You were muted by a moderator. " + getReprimand());
   }
+
   target->m_is_muted = true;
 }
 
@@ -417,6 +428,7 @@ void kenji::AOClient::cmdUnMute(int argc, QStringList argv)
     sendServerMessage("Unmuted player.");
     l_target->sendServerMessage("You were unmuted by a moderator. " + getReprimand(true));
   }
+
   l_target->m_is_muted = false;
 }
 
@@ -449,6 +461,7 @@ void kenji::AOClient::cmdOocMute(int argc, QStringList argv)
     sendServerMessage("OOC muted player.");
     l_target->sendServerMessage("You were OOC muted by a moderator. " + getReprimand());
   }
+
   l_target->m_is_ooc_muted = true;
 }
 
@@ -481,6 +494,7 @@ void kenji::AOClient::cmdOocUnMute(int argc, QStringList argv)
     sendServerMessage("OOC unmuted player.");
     l_target->sendServerMessage("You were OOC unmuted by a moderator. " + getReprimand(true));
   }
+
   l_target->m_is_ooc_muted = false;
 }
 
@@ -513,6 +527,7 @@ void kenji::AOClient::cmdBlockWtce(int argc, QStringList argv)
     sendServerMessage("Revoked player's access to judge controls.");
     l_target->sendServerMessage("A moderator revoked your judge controls access. " + getReprimand());
   }
+
   l_target->m_is_wtce_blocked = true;
 }
 
@@ -545,6 +560,7 @@ void kenji::AOClient::cmdUnBlockWtce(int argc, QStringList argv)
     sendServerMessage("Restored player's access to judge controls.");
     l_target->sendServerMessage("A moderator restored your judge controls access. " + getReprimand(true));
   }
+
   l_target->m_is_wtce_blocked = false;
 }
 
@@ -591,6 +607,7 @@ void kenji::AOClient::cmdBanInfo(int argc, QStringList argv)
     sendServerMessage("Invalid command.");
     return;
   }
+
   QString l_id = argv[0];
   const QList<BanInfo> l_bans = server->getDatabaseManager()->getBanInfo(l_lookup_type, l_id);
   for (const BanInfo &l_ban : l_bans)
@@ -598,6 +615,7 @@ void kenji::AOClient::cmdBanInfo(int argc, QStringList argv)
     l_ban_info << l_ban.toString();
     l_ban_info << "-----";
   }
+
   sendServerMessage(l_ban_info.join("\n"));
 }
 
@@ -643,6 +661,7 @@ void kenji::AOClient::cmdPermitSaving(int argc, QStringList argv)
     sendServerMessage("Invalid ID.");
     return;
   }
+
   l_client->m_testimony_saving = true;
   sendServerMessage("Testimony saving has been enabled for client " + QString::number(l_client->id));
 }
@@ -673,6 +692,7 @@ void kenji::AOClient::cmdKickUid(int argc, QStringList argv)
     sendServerMessage("No client with that ID found.");
     return;
   }
+
   theory::ErrorPacket l_kicked;
   l_kicked.code = theory::ErrorPacket::Banned;
   l_kicked.what = l_reason;
@@ -690,6 +710,7 @@ void kenji::AOClient::cmdUpdateBan(int argc, QStringList argv)
     sendServerMessage("Invalid ban ID.");
     return;
   }
+
   QVariant l_updated_info;
   if (argv[1] == "duration")
   {
@@ -702,11 +723,13 @@ void kenji::AOClient::cmdUpdateBan(int argc, QStringList argv)
     {
       l_duration_seconds = parseTime(argv[2]);
     }
+
     if (l_duration_seconds == -1)
     {
       sendServerMessage("Invalid time format. Format example: 1h30m");
       return;
     }
+
     l_updated_info = QVariant(l_duration_seconds);
   }
   else if (argv[1] == "reason")
@@ -719,6 +742,7 @@ void kenji::AOClient::cmdUpdateBan(int argc, QStringList argv)
         l_args_str += " " + argv[i];
       }
     }
+
     l_updated_info = QVariant(l_args_str);
   }
   else
@@ -726,11 +750,13 @@ void kenji::AOClient::cmdUpdateBan(int argc, QStringList argv)
     sendServerMessage("Invalid update type.");
     return;
   }
+
   if (!server->getDatabaseManager()->updateBan(l_ban_id, argv[1], l_updated_info))
   {
     sendServerMessage("There was an error updating the ban. Please confirm the ban ID is valid.");
     return;
   }
+
   sendServerMessage("Ban updated.");
 }
 
@@ -774,6 +800,7 @@ void kenji::AOClient::cmdKickOther(int argc, QStringList argv)
     l_target_client->drop();
     l_kick_counter++;
   }
+
   sendServerMessage("Kicked " + QString::number(l_kick_counter) + " multiclients from the server.");
 }
 

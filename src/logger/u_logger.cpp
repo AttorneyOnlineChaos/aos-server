@@ -13,6 +13,7 @@ kenji::ULogger::ULogger(QObject *parent)
     writerFull = new WriterFull;
     break;
   }
+
   loadLogtext();
 }
 
@@ -73,6 +74,7 @@ void kenji::ULogger::logCMD(const QString &f_char_name, const QString &f_ipid, c
   {
     l_logEntry = QString(m_logtext.value("cmd") + "\n").arg(l_time, f_area_name, f_char_name, f_ooc_name, f_command, f_args.join(" "), f_ipid);
   }
+
   updateAreaBuffer(f_area_name, l_logEntry);
 }
 
@@ -135,12 +137,14 @@ void kenji::ULogger::updateAreaBuffer(const QString &f_area_name, const QString 
     l_buffer.dequeue();
     l_buffer.enqueue(f_log_entry);
   }
+
   m_bufferMap.insert(f_area_name, l_buffer);
 
   if (ConfigManager::loggingType() == DataTypes::LogType::FULL)
   {
     writerFull->flush(f_log_entry);
   }
+
   if (ConfigManager::loggingType() == DataTypes::LogType::FULLAREA)
   {
     writerFull->flush(f_log_entry, f_area_name);

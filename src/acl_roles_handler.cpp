@@ -10,7 +10,7 @@ const QString kenji::ACLRolesHandler::NONE_ID = "NONE";
 
 const QString kenji::ACLRolesHandler::SUPER_ID = "SUPER";
 
-const QHash<QString, kenji::ACLRole> kenji::ACLRolesHandler::readonly_roles{
+const QHash<QString, kenji::ACLRole> kenji::ACLRolesHandler::READONLY_ROLES{
     {ACLRolesHandler::NONE_ID, ACLRole(ACLRole::NONE)},
     {ACLRolesHandler::SUPER_ID, ACLRole(ACLRole::SUPER)},
 };
@@ -115,6 +115,7 @@ bool kenji::ACLRole::checkPermission(Permission f_permission) const
   {
     return true;
   }
+
   return m_permissions.testFlag(f_permission);
 }
 
@@ -138,13 +139,13 @@ kenji::ACLRolesHandler::~ACLRolesHandler()
 bool kenji::ACLRolesHandler::roleExists(QString f_id)
 {
   f_id = f_id.toUpper();
-  return readonly_roles.contains(f_id) || m_roles.contains(f_id);
+  return READONLY_ROLES.contains(f_id) || m_roles.contains(f_id);
 }
 
 kenji::ACLRole kenji::ACLRolesHandler::getRoleById(QString f_id)
 {
   f_id = f_id.toUpper();
-  return readonly_roles.contains(f_id) ? readonly_roles.value(f_id) : m_roles.value(f_id);
+  return READONLY_ROLES.contains(f_id) ? READONLY_ROLES.value(f_id) : m_roles.value(f_id);
 }
 
 bool kenji::ACLRolesHandler::loadFile(const QString &f_file_name)
@@ -161,7 +162,7 @@ bool kenji::ACLRolesHandler::loadFile(const QString &f_file_name)
   for (const QString &i_group : l_group_list)
   {
     const QString l_upper_group = i_group.toUpper();
-    if (readonly_roles.contains(l_upper_group))
+    if (READONLY_ROLES.contains(l_upper_group))
     {
       zWarning(log::acl) << "warning: cannot modify role;" << i_group << "is read-only";
       continue;
@@ -173,6 +174,7 @@ bool kenji::ACLRolesHandler::loadFile(const QString &f_file_name)
       zWarning(log::acl) << "warning: role" << l_upper_group << "already exist";
       continue;
     }
+
     l_role_records.append(l_upper_group);
 
     ACLRole l_role;
@@ -185,6 +187,7 @@ bool kenji::ACLRolesHandler::loadFile(const QString &f_file_name)
         l_role.setPermission(i_permission, l_value.toBool());
       }
     }
+
     m_roles.insert(l_upper_group, std::move(l_role));
     l_settings.endGroup();
   }
@@ -213,5 +216,6 @@ bool kenji::ACLRolesHandler::checkPermissionsIni(QSettings *f_settings)
 
     return false;
   }
+
   return true;
 }

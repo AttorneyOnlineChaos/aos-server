@@ -2,8 +2,9 @@
 
 #include "connection.h"
 
-kenji::ConnectionPool::ConnectionPool(SessionRegistry &sessions, DBManager &database, QObject *parent)
+kenji::ConnectionPool::ConnectionPool(theory::BadgeGateway &gateway, SessionRegistry &sessions, DBManager &database, QObject *parent)
     : QObject{parent}
+    , _gateway{gateway}
     , _sessions{sessions}
     , _database{database}
 {}
@@ -31,7 +32,7 @@ void kenji::ConnectionPool::clear()
 
 void kenji::ConnectionPool::create(const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &address, const QString &ipid)
 {
-  Connection *connection = new Connection(_sessions, _database, socket, address, ipid, this);
+  Connection *connection = new Connection(_gateway, _sessions, _database, socket, address, ipid, this);
   _connections.append(connection);
 
   connect(connection, &Connection::connectionAttempted, this, &ConnectionPool::connectionAttempted);

@@ -14,6 +14,7 @@ kenji::ClientGameObserver::ClientGameObserver(AOClient &viewer, AOClientRegistry
   {
     connectClient(client);
   }
+
   connect(&_clients, &AOClientRegistry::clientAdded, this, [this](theory::PlayerId playerId) {
     AOClient *client = _clients.client(playerId);
     connectClient(client);
@@ -54,6 +55,7 @@ kenji::ClientGameObserver::ClientGameObserver(AOClient &viewer, AOClientRegistry
     {
       shipEvidenceRecord(inventoryId, evidenceId, theory::EvidenceRecordPacket::Remove);
     }
+
     synchronizeAllEvidence();
   });
 
@@ -82,10 +84,12 @@ bool kenji::ClientGameObserver::isEvidenceVisible(theory::InventoryId inventoryI
   {
     return true;
   }
+
   if (!isInventoryReachable(inventoryId))
   {
     return false;
   }
+
   // TODO This is a temporary bandaid that needs to be removed when the party system is implemented. Chop chop!
   const bool personal = _server.getAreaById(_viewer.areaId())->inventoryId != inventoryId;
   return evidence.revealed || (personal && permission >= theory::InventoryPermission::View);
@@ -112,6 +116,7 @@ void kenji::ClientGameObserver::shipPlayerRecord(theory::PlayerId playerId, theo
   {
     packet.inventoryId = _clients.client(playerId)->inventoryId;
   }
+
   _viewer.shipPacket(packet);
 }
 
@@ -207,10 +212,12 @@ bool kenji::ClientGameObserver::isInventoryReachable(theory::InventoryId invento
   {
     return false;
   }
+
   if (_server.getAreaById(areaId)->inventoryId == inventoryId)
   {
     return true;
   }
+
   for (const AOClient *client : _clients.clientsInArea(areaId))
   {
     if (client->inventoryId == inventoryId)
@@ -218,6 +225,7 @@ bool kenji::ClientGameObserver::isInventoryReachable(theory::InventoryId invento
       return true;
     }
   }
+
   return false;
 }
 
@@ -316,15 +324,18 @@ void kenji::ClientGameObserver::shipSnapshot()
     shipPlayerRecord(client->id, theory::PlayerRecordPacket::Add);
     shipPlayerUpdates(*client);
   }
+
   for (const AreaData *area : _server.getAreas())
   {
     shipAreaRecord(*area);
     shipAreaUpdates(*area);
   }
+
   for (const theory::InventoryId inventoryId : _inventories.inventories())
   {
     shipInventoryRecord(inventoryId, theory::InventoryRecordPacket::Add);
     shipInventoryUpdate(inventoryId);
   }
+
   synchronizeAllEvidence();
 }

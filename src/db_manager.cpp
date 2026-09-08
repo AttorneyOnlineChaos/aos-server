@@ -50,6 +50,7 @@ kenji::DBManager::DBManager(QObject *parent)
   {
     zCritical(log::database) << "Database Error:" << db.lastError();
   }
+
   db_version = checkVersion();
   QSqlQuery create_ban_table("CREATE TABLE IF NOT EXISTS bans ('ID' INTEGER, 'IPID' TEXT, 'HDID' TEXT, 'IP' TEXT, 'TIME' INTEGER, 'REASON' TEXT, 'DURATION' INTEGER, 'MODERATOR' TEXT, 'REVOKED' INTEGER, PRIMARY KEY('ID' AUTOINCREMENT))");
   create_ban_table.exec();
@@ -83,6 +84,7 @@ QPair<bool, kenji::BanInfo> kenji::DBManager::isIPBanned(const QString &ipid)
     {
       return {false, ban};
     }
+
     unsigned long current_time = QDateTime::currentDateTime().toSecsSinceEpoch();
     if (ban.time + ban.duration > current_time)
     {
@@ -121,6 +123,7 @@ QPair<bool, kenji::BanInfo> kenji::DBManager::isHDIDBanned(const QString &hdid)
     {
       return {false, ban};
     }
+
     unsigned long current_time = QDateTime::currentDateTime().toSecsSinceEpoch();
     if (ban.time + ban.duration > current_time)
     {
@@ -190,6 +193,7 @@ QList<kenji::BanInfo> kenji::DBManager::getRecentBans()
     ban.revoked = query.value(8).toBool();
     return_list.append(ban);
   }
+
   std::reverse(return_list.begin(), return_list.end());
   return return_list;
 }
@@ -232,6 +236,7 @@ bool kenji::DBManager::invalidateBan(int id)
     zDebug(log::database) << "SQL Error:" << query.lastError().text();
     return false;
   }
+
   return true;
 }
 
@@ -297,6 +302,7 @@ QString kenji::DBManager::getACL(const QString &moderator_name)
   {
     return 0;
   }
+
   QSqlQuery query("SELECT ACL FROM users WHERE USERNAME = ?");
   query.addBindValue(moderator_name);
   query.exec();
@@ -304,6 +310,7 @@ QString kenji::DBManager::getACL(const QString &moderator_name)
   {
     return 0;
   }
+
   return query.value(0).toString();
 }
 
@@ -316,6 +323,7 @@ bool kenji::DBManager::authenticate(const QString &username, const QString &pass
   {
     return false;
   }
+
   QString salt = query_salt.value(0).toString();
 
   QString salted_password = CryptoHelper::hash_password(QByteArray::fromHex(salt.toUtf8()), password);
@@ -327,6 +335,7 @@ bool kenji::DBManager::authenticate(const QString &username, const QString &pass
   {
     return false;
   }
+
   QString stored_pass = query_pass.value(0).toString();
 
   // Update old-style hashes to new ones on the fly
@@ -393,6 +402,7 @@ QList<kenji::BanInfo> kenji::DBManager::getBanInfo(const QString &lookup_type, c
     zCritical(log::database) << "Invalid ban lookup type!";
     return invalid;
   }
+
   query.addBindValue(id);
   query.setForwardOnly(true);
   query.exec();
@@ -410,6 +420,7 @@ QList<kenji::BanInfo> kenji::DBManager::getBanInfo(const QString &lookup_type, c
     ban.revoked = query.value(8).toBool();
     return_list.append(ban);
   }
+
   std::reverse(return_list.begin(), return_list.end());
   return return_list;
 }
@@ -427,6 +438,7 @@ bool kenji::DBManager::updateBan(int ban_id, const QString &field, const QVarian
     query.prepare("UPDATE bans SET DURATION = ? WHERE ID = ?");
     query.addBindValue(updated_info.toLongLong());
   }
+
   query.addBindValue(ban_id);
   if (!query.exec())
   {
@@ -453,6 +465,7 @@ bool kenji::DBManager::updatePassword(const QString &username, const QString &pa
   {
     return false;
   }
+
   return query.numRowsAffected() > 0;
 }
 

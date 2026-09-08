@@ -52,6 +52,7 @@ void kenji::AOClient::loginAttempt(const QString &message)
       l_auth.state = theory::AuthStatePacket::LoginFailed;
       shipPacket(l_auth); // Client: "Login unsuccessful."
     }
+
     m_logger.logLogin((m_character.toString() + " " + characterName().value_or(QString())), name(), "Moderator", m_ipid, server->getAreaById(areaId())->name(), m_authenticated);
     break;
   case DataTypes::AuthType::ADVANCED:
@@ -63,6 +64,7 @@ void kenji::AOClient::loginAttempt(const QString &message)
       m_is_logging_in = false;
       return;
     }
+
     QString username = l_login[0];
     QString password = l_login[1];
     if (server->getDatabaseManager()->authenticate(username, password))
@@ -81,9 +83,11 @@ void kenji::AOClient::loginAttempt(const QString &message)
       l_auth.state = theory::AuthStatePacket::LoginFailed;
       shipPacket(l_auth);
     }
+
     m_logger.logLogin((m_character.toString() + " " + characterName().value_or(QString())), name(), username, m_ipid, server->getAreaById(areaId())->name(), m_authenticated);
     break;
   }
+
   sendServerMessage("Exiting login prompt.");
   m_is_logging_in = false;
   return;

@@ -4,8 +4,11 @@
 #include "db_manager.h"
 #include "protocol/protocol_info.h"
 
-kenji::Connection::Connection(SessionRegistry &sessions, DBManager &database, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &address, const QString &ipid, QObject *parent)
+#include <QUuid>
+
+kenji::Connection::Connection(theory::BadgeGateway &gateway, SessionRegistry &sessions, DBManager &database, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &address, const QString &ipid, QObject *parent)
     : QObject{parent}
+    , _gateway{gateway}
     , _sessions{sessions}
     , _database{database}
     , _socket{socket}
@@ -43,6 +46,7 @@ void kenji::Connection::beginHandshake()
     finish();
     return;
   }
+
   _deadline.start(ConfigManager::handshakeTimeout() * 1000);
   processPendingPackets();
 }
@@ -53,13 +57,20 @@ void kenji::Connection::finish()
   {
     return;
   }
+
   _finished = true;
   _deadline.stop();
+  if (_gatekeeper)
+  {
+    _gatekeeper->cancel();
+  }
+
   if (_socket)
   {
     _socket->disconnect(this);
     _socket->close();
   }
+
   Q_EMIT finished();
 }
 
@@ -69,6 +80,7 @@ void kenji::Connection::drop(theory::ErrorPacket::Code code, const QString &reas
   {
     return;
   }
+
   theory::ErrorPacket error;
   error.code = code;
   error.what = reason;
@@ -99,13 +111,72 @@ void kenji::Connection::process(const theory::HelloPacket &packet)
 
 void kenji::Connection::process(const theory::SessionClaimPacket &packet)
 {
-  const auto ticket = _sessions.join(packet.sessionToken, _hdid, _socket, _address);
-  if (!ticket)
+  _sessionToken = packet.sessionToken;
+  _router.unregisterAllRoutes();
+  _router.registerRoute<theory::BadgeSelectPacket>(&Connection::process, this);
+  _router.registerRoute<theory::BadgePacket>(&Connection::process, this);
+  _gatekeeper = _gateway.create(_address, QUuid::createUuid());
+  connect(_gatekeeper.get(), &theory::BadgeGatekeeper::selectionReady, this, &Connection::shipBadgeSelection);
+  connect(_gatekeeper.get(), &theory::BadgeGatekeeper::challengeReady, this, &Connection::shipBadgeChallenge);
+  connect(_gatekeeper.get(), &theory::BadgeGatekeeper::admitted, this, &Connection::admitPlayer);
+  connect(_gatekeeper.get(), &theory::BadgeGatekeeper::refused, this, &Connection::refusePlayer);
+  _deadline.stop();
+  _gatekeeper->start(packet.userToken);
+}
+
+void kenji::Connection::process(const theory::BadgeSelectPacket &packet)
+{
+  _gatekeeper->processSelect(packet.badgeId);
+}
+
+void kenji::Connection::process(const theory::BadgePacket &packet)
+{
+  _gatekeeper->processResponse(packet.badgeId, packet.payload);
+}
+
+void kenji::Connection::shipBadgeSelection(const QStringList &badgeIds)
+{
+  theory::BadgeSelectionPacket selection;
+  selection.badgeIds = badgeIds;
+  _socket->shipPacket(selection);
+}
+
+void kenji::Connection::shipBadgeChallenge(const QString &badgeId, const QJsonObject &challengeData)
+{
+  theory::BadgePacket badge;
+  badge.badgeId = badgeId;
+  badge.payload = challengeData;
+  _socket->shipPacket(badge);
+}
+
+void kenji::Connection::admitPlayer(const theory::UserDatabase::Ticket &ticket)
+{
+  _userToken = ticket.token;
+  const auto session = _sessions.join(ticket, _sessionToken, _hdid, _socket, _address);
+  if (!session)
   {
     drop(theory::ErrorPacket::ServerFull);
     return;
   }
-  finishHandshake(ticket.value());
+
+  finishHandshake(session.value());
+}
+
+void kenji::Connection::refusePlayer(const theory::BadgeError &error)
+{
+  switch (error.code)
+  {
+  default:
+  case theory::BadgeError::Internal:
+    drop(theory::ErrorPacket::ProtocolError, QStringLiteral("internal error"));
+    break;
+  case theory::BadgeError::Denied:
+    drop(theory::ErrorPacket::Unauthorized, error.what);
+    break;
+  case theory::BadgeError::OutOfRange:
+    drop(theory::ErrorPacket::ProtocolError, error.what);
+    break;
+  }
 }
 
 void kenji::Connection::finishHandshake(const SessionRegistry::Ticket &ticket)
@@ -122,10 +193,12 @@ void kenji::Connection::finishHandshake(const SessionRegistry::Ticket &ticket)
     previous->shipPacket(packet);
     previous->close();
   }
+
   client->m_remote_ip = _address;
   client->m_ipid = _ipid;
 
   theory::SessionGrantPacket grant;
+  grant.userToken = _userToken;
   grant.sessionToken = ticket.token;
   grant.result = ticket.recovered ? theory::SessionGrantPacket::Recovered : theory::SessionGrantPacket::Fresh;
   client->shipPacket(grant);
@@ -153,6 +226,7 @@ void kenji::Connection::processPendingPackets()
       drop(theory::ErrorPacket::ProtocolError, error->toString());
       return;
     }
+
     if (_client)
     {
       if (!_client->processPendingPacket(*packet))

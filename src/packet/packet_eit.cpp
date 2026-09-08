@@ -23,6 +23,7 @@ void kenji::AOClient::process(const theory::InventoryTransferPacket &packet)
   {
     held = m_inventories.count(packet.inventoryId);
   }
+
   if (held + packet.list.size() > limit)
   {
     shipGameError(theory::GameError::inventoryFull(QString::number(limit)));
@@ -34,6 +35,7 @@ void kenji::AOClient::process(const theory::InventoryTransferPacket &packet)
     m_inventories.resetEvidence(packet.inventoryId, packet.list);
     return;
   }
+
   for (const theory::Evidence &evidence : packet.list)
   {
     m_inventories.createEvidence(packet.inventoryId, evidence);

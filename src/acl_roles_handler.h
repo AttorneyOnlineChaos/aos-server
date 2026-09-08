@@ -174,7 +174,7 @@ private:
   /**
    * @brief Shared read-only standard roles with the appropriate permissions.
    */
-  static const QHash<QString, ACLRole> readonly_roles;
+  static const QHash<QString, ACLRole> READONLY_ROLES;
 
   /**
    * @brief The roles of the handler.

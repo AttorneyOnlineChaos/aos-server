@@ -28,13 +28,13 @@ void kenji::Timer::start()
     return;
   }
 
-  if (_duration == 0)
+  if (_durationMs == 0)
   {
     handleTimeout();
     return;
   }
 
-  _timer.setInterval(_duration);
+  _timer.setInterval(_durationMs);
   _timer.start();
   setState(theory::TimerState::Running);
 }
@@ -47,7 +47,8 @@ void kenji::Timer::pause(bool enabled)
     {
       return;
     }
-    _remaining = _timer.remainingTime();
+
+    _remainingMs = _timer.remainingTime();
     _timer.stop();
     setState(theory::TimerState::Paused);
     return;
@@ -58,7 +59,8 @@ void kenji::Timer::pause(bool enabled)
     {
       return;
     }
-    _timer.setInterval(_remaining);
+
+    _timer.setInterval(_remainingMs);
     _timer.start();
     setState(theory::TimerState::Running);
   }
@@ -70,17 +72,18 @@ void kenji::Timer::stop()
   {
     return;
   }
+
   _timer.stop();
-  _remaining = 0;
+  _remainingMs = 0;
   setState(theory::TimerState::NotRunning);
 }
 
-qint64 kenji::Timer::duration() const
+qint64 kenji::Timer::durationMs() const
 {
-  return _duration;
+  return _durationMs;
 }
 
-qint64 kenji::Timer::remaining() const
+qint64 kenji::Timer::remainingMs() const
 {
   if (_state == theory::TimerState::Running)
   {
@@ -89,16 +92,16 @@ qint64 kenji::Timer::remaining() const
 
   if (_state == theory::TimerState::Paused)
   {
-    return _remaining;
+    return _remainingMs;
   }
 
   return 0;
 }
 
-void kenji::Timer::setDuration(qint64 milliseconds)
+void kenji::Timer::setDurationMs(qint64 durationMs)
 {
-  _duration = qMax<qint64>(0, milliseconds);
-  _timer.setInterval(_duration);
+  _durationMs = qMax<qint64>(0, durationMs);
+  _timer.setInterval(_durationMs);
 }
 
 bool kenji::Timer::isVisible() const
@@ -112,6 +115,7 @@ void kenji::Timer::setVisible(bool visible)
   {
     return;
   }
+
   _visible = visible;
   Q_EMIT visibilityChanged(_visible);
 }
@@ -122,6 +126,7 @@ void kenji::Timer::setState(theory::TimerState state)
   {
     return;
   }
+
   _state = state;
   Q_EMIT stateChanged(_state);
 }
@@ -148,7 +153,7 @@ theory::TimerPacket kenji::makeTimerPacket(const Timer &timer, theory::TimerPack
     packet.data = theory::encodeJson(timer.state());
     break;
   case theory::TimerPacket::Tick:
-    packet.data = theory::encodeJson(timer.remaining());
+    packet.data = theory::encodeJson(timer.remainingMs());
     break;
   case theory::TimerPacket::Visibility:
     packet.data = theory::encodeJson(timer.isVisible());

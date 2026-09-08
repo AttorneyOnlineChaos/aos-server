@@ -20,6 +20,7 @@ void kenji::InventoryRegistry::remove(theory::InventoryId inventoryId)
   {
     discard(evidenceId);
   }
+
   Q_EMIT removed(inventoryId);
 }
 
@@ -45,6 +46,7 @@ int kenji::InventoryRegistry::capacity(theory::InventoryId inventoryId) const
   {
     return 0;
   }
+
   return entry->handle->capacity();
 }
 
@@ -57,6 +59,7 @@ QList<theory::EvidenceItem> kenji::InventoryRegistry::inventory(theory::Inventor
   {
     held.append(theory::EvidenceItem{evidenceId, _evidence.value(evidenceId)});
   }
+
   return held;
 }
 
@@ -67,6 +70,7 @@ theory::InventoryPermission kenji::InventoryRegistry::hasPermission(theory::Inve
   {
     return theory::InventoryPermission::NoPermission;
   }
+
   return entry->handle->permission(playerId);
 }
 
@@ -77,6 +81,7 @@ std::optional<theory::InventoryId> kenji::InventoryRegistry::inventoryOf(theory:
   {
     return std::nullopt;
   }
+
   return owner.value();
 }
 
@@ -87,6 +92,7 @@ std::optional<theory::EvidenceItem> kenji::InventoryRegistry::evidence(theory::E
   {
     return std::nullopt;
   }
+
   return theory::EvidenceItem{evidenceId, held.value()};
 }
 
@@ -104,6 +110,7 @@ bool kenji::InventoryRegistry::removeEvidence(theory::EvidenceId evidenceId)
   {
     return false;
   }
+
   Q_EMIT aboutToRemoveEvidence(owner.value(), theory::EvidenceItem{evidenceId, _evidence.value(evidenceId)});
   _inventories[owner.value()].items.removeOne(evidenceId);
   discard(evidenceId);
@@ -119,12 +126,14 @@ void kenji::InventoryRegistry::resetEvidence(theory::InventoryId inventoryId, co
   {
     discard(evidenceId);
   }
+
   contents->items.clear();
 
   for (const theory::Evidence &asset : assets)
   {
     create(inventoryId, asset);
   }
+
   Q_EMIT evidenceReset(inventoryId);
 }
 
@@ -141,6 +150,7 @@ void kenji::InventoryRegistry::clear(theory::InventoryId inventoryId)
   {
     discard(evidenceId);
   }
+
   contents->items.clear();
   Q_EMIT evidenceReset(inventoryId);
 }
@@ -152,12 +162,14 @@ bool kenji::InventoryRegistry::setEvidence(theory::EvidenceId evidenceId, const 
   {
     return false;
   }
+
   if (held.value() != asset)
   {
     const theory::Evidence previous = held.value();
     held.value() = asset;
     Q_EMIT evidenceReplaced(_owners.value(evidenceId), theory::EvidenceItem{evidenceId, asset}, previous);
   }
+
   return true;
 }
 
@@ -168,6 +180,7 @@ bool kenji::InventoryRegistry::setEvidenceRevealed(theory::EvidenceId evidenceId
   {
     return false;
   }
+
   theory::Evidence asset = held.value();
   asset.revealed = revealed;
   return setEvidence(evidenceId, asset);

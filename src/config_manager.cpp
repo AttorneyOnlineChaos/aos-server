@@ -1,5 +1,6 @@
 #include "config_manager.h"
 
+#include "badge/badge_server_engine.h"
 #include "core/logging.h"
 #include "kenji_defs.h"
 
@@ -76,6 +77,7 @@ bool kenji::ConfigManager::verifyServerConfig()
         break;
       }
     }
+
     self->m_commands.dice_faces[dice] = faces;
     l_dice_ini.endGroup();
   }
@@ -89,17 +91,21 @@ bool kenji::ConfigManager::verifyServerConfig()
     zCritical(log::config) << "ms_port is not a valid port!";
     return false;
   }
+
   self->m_settings.value("port", 27016).toInt(&ok);
   if (!ok)
   {
     zCritical(log::config) << "port is not a valid port!";
     return false;
   }
-  self->m_settings.value("secure_port", -1).toInt(&ok);
-  if (!ok)
+
+  if (self->m_settings.value("use_tls", false).toBool())
   {
-    zCritical(log::config) << "secure_port is not a valid port!";
-    return false;
+    if (self->m_settings.value("tls_certificate").toString().isEmpty() || self->m_settings.value("tls_private_key").toString().isEmpty())
+    {
+      zCritical(log::config) << "use_tls is enabled but tls_certificate or tls_private_key is empty!";
+      return false;
+    }
   }
 
   QString l_auth = self->m_settings.value("auth", "simple").toString().toLower();
@@ -115,6 +121,7 @@ bool kenji::ConfigManager::verifyServerConfig()
     zCritical(log::config) << "packet_rate_limit_soft is not a valid limit!";
     return false;
   }
+
   if (l_soft_limit <= 0)
   {
     zWarning(log::config) << "packet_rate_limit_soft is 0 or less, warning threshold is disabled!";
@@ -131,12 +138,62 @@ bool kenji::ConfigManager::verifyServerConfig()
     zCritical(log::config) << "packet_rate_limit_hard must be greater than packet_rate_limit_soft!";
     return false;
   }
+
   if (l_hard_limit <= 0)
   {
     zWarning(log::config) << "packet_rate_limit_hard is 0 or less, rate limiting is disabled!";
   }
 
   self->m_settings.endGroup();
+
+  if (badgeIds().join(QString()).isEmpty())
+  {
+    zCritical(log::config) << "ids must name at least one badge!";
+    return false;
+  }
+
+  if (const auto error = theory::BadgeServerEngine::verifyCallbackOrigin(badgeRedirectOrigin()))
+  {
+    zCritical(log::config) << error->toString();
+    return false;
+  }
+
+  if (userTokenTtl() < 1)
+  {
+    zCritical(log::config) << "user_token_ttl must be 1 or more!";
+    return false;
+  }
+
+  if (badgeRoundLimit() < 1)
+  {
+    zCritical(log::config) << "round_limit must be 1 or more!";
+    return false;
+  }
+
+  if (badgeSelectTimeout() < 1)
+  {
+    zCritical(log::config) << "select_timeout must be 1 or more!";
+    return false;
+  }
+
+  if (challengeTimeout() < 1)
+  {
+    zCritical(log::config) << "challenge_timeout must be 1 or more!";
+    return false;
+  }
+
+  if (challengeAttempts() < 1)
+  {
+    zCritical(log::config) << "challenge_attempts must be 1 or more!";
+    return false;
+  }
+
+  if (challengeAttemptWindow() < 1)
+  {
+    zCritical(log::config) << "challenge_attempt_window must be 1 or more!";
+    return false;
+  }
+
   self->m_commands.magic_8ball = (loadConfigFile("8ball"));
   self->m_commands.praises = (loadConfigFile("praise"));
   self->m_commands.reprimands = (loadConfigFile("reprimands"));
@@ -165,10 +222,12 @@ QStringList kenji::ConfigManager::charlist()
     zWarning(log::config) << "Failed to load character list:" << l_file.errorString();
     return l_charlist;
   }
+
   while (!l_file.atEnd())
   {
     l_charlist.append(QString::fromUtf8(l_file.readLine().trimmed()));
   }
+
   l_file.close();
 
   return l_charlist;
@@ -183,10 +242,12 @@ QStringList kenji::ConfigManager::backgrounds()
     zWarning(log::config) << "Failed to load background list:" << l_file.errorString();
     return l_backgrounds;
   }
+
   while (!l_file.atEnd())
   {
     l_backgrounds.append(l_file.readLine().trimmed());
   }
+
   l_file.close();
 
   return l_backgrounds;
@@ -250,7 +311,7 @@ QList<theory::MusicPlaylist> kenji::ConfigManager::musiclist()
       const theory::TrackLength l_song_duration = l_song_obj["length"].toVariant().toInt();
       if (l_song_duration > 0)
       {
-        l_track.length = l_song_duration;
+        l_track.lengthSeconds = l_song_duration;
       }
 
       l_playlist.tracks.append(l_track);
@@ -258,6 +319,7 @@ QList<theory::MusicPlaylist> kenji::ConfigManager::musiclist()
 
     self->m_musicList.append(l_playlist);
   }
+
   l_music_json.close();
 
   return self->m_musicList;
@@ -326,6 +388,7 @@ QStringList kenji::ConfigManager::sanitizedAreaNames()
     QString l_area_name_sanitized = l_nameSplit.join(":");
     l_sanitized_area_names.append(l_area_name_sanitized);
   }
+
   return l_sanitized_area_names;
 }
 
@@ -364,8 +427,10 @@ QStringList kenji::ConfigManager::iprangeBans()
     {
       l_range_bans.append(query.value(0).toString());
     }
+
     asn_db.close();
   }
+
   l_range_bans.removeDuplicates();
   return l_range_bans;
 }
@@ -386,10 +451,12 @@ QStringList kenji::ConfigManager::loadConfigFile(const QString &filename)
     zWarning(log::config) << "Failed to load config file" << filename << ":" << l_file.errorString();
     return stringlist;
   }
+
   while (!(l_file.atEnd()))
   {
     stringlist.append(l_file.readLine().trimmed());
   }
+
   l_file.close();
   return stringlist;
 }
@@ -403,6 +470,7 @@ int kenji::ConfigManager::maxPlayers()
     zWarning(log::config) << "max_players is not an int!";
     l_players = 100;
   }
+
   return l_players;
 }
 
@@ -417,9 +485,19 @@ int kenji::ConfigManager::serverPort()
   return self->m_settings.value("Options/port", 27016).toInt();
 }
 
-int kenji::ConfigManager::securePort()
+bool kenji::ConfigManager::useTls()
 {
-  return self->m_settings.value("Options/secure_port", -1).toInt();
+  return self->m_settings.value("Options/use_tls", false).toBool();
+}
+
+QString kenji::ConfigManager::tlsCertificate()
+{
+  return self->m_settings.value("Options/tls_certificate").toString();
+}
+
+QString kenji::ConfigManager::tlsPrivateKey()
+{
+  return self->m_settings.value("Options/tls_private_key").toString();
 }
 
 QString kenji::ConfigManager::serverDescription()
@@ -463,6 +541,7 @@ int kenji::ConfigManager::logBuffer()
     zWarning(log::config) << "logbuffer is not an int!";
     l_buffer = 500;
   }
+
   return l_buffer;
 }
 
@@ -481,6 +560,7 @@ int kenji::ConfigManager::maxStatements()
     zWarning(log::config) << "maximum_statements is not an int!";
     l_max = 10;
   }
+
   return l_max;
 }
 int kenji::ConfigManager::multiClientLimit()
@@ -492,6 +572,7 @@ int kenji::ConfigManager::multiClientLimit()
     zWarning(log::config) << "multiclient_limit is not an int!";
     l_limit = 15;
   }
+
   return l_limit;
 }
 
@@ -504,6 +585,7 @@ int kenji::ConfigManager::maxNameLength()
     zWarning(log::config) << "maximum_name_length is not a positive int!";
     l_max = 30;
   }
+
   return l_max;
 }
 
@@ -516,6 +598,7 @@ int kenji::ConfigManager::maxCharacterNameLength()
     zWarning(log::config) << "maximum_ic_name_length is not a positive int!";
     l_max = 30;
   }
+
   return l_max;
 }
 
@@ -528,6 +611,7 @@ int kenji::ConfigManager::maxMessageLength()
     zWarning(log::config) << "maximum_text_length is not a positive int!";
     l_max = 256;
   }
+
   return l_max;
 }
 
@@ -540,6 +624,7 @@ int kenji::ConfigManager::maxIcMessageLength()
     zWarning(log::config) << "maximum_ic_text_length is not a positive int!";
     l_max = 256;
   }
+
   return l_max;
 }
 
@@ -552,6 +637,7 @@ int kenji::ConfigManager::maxEvidenceNameLength()
     zWarning(log::config) << "maximum_evidence_name_length is not a positive int!";
     l_max = 30;
   }
+
   return l_max;
 }
 
@@ -564,6 +650,7 @@ int kenji::ConfigManager::maxEvidenceDescriptionLength()
     zWarning(log::config) << "maximum_evidence_description_length is not a positive int!";
     l_max = 1024;
   }
+
   return l_max;
 }
 
@@ -576,6 +663,7 @@ int kenji::ConfigManager::maxInventorySize()
     zWarning(log::config) << "max_inventory_size is not a positive int!";
     l_max = 100;
   }
+
   return l_max;
 }
 
@@ -588,10 +676,11 @@ int kenji::ConfigManager::maxPersonalInventorySize()
     zWarning(log::config) << "max_personal_inventory_size is not a non-negative int!";
     l_max = 20;
   }
+
   return l_max;
 }
 
-int kenji::ConfigManager::messageFloodguard()
+int kenji::ConfigManager::messageFloodguardMs()
 {
   bool ok;
   int l_flood = self->m_settings.value("Options/message_floodguard", 250).toInt(&ok);
@@ -600,10 +689,11 @@ int kenji::ConfigManager::messageFloodguard()
     zWarning(log::config) << "message_floodguard is not an int!";
     l_flood = 250;
   }
+
   return l_flood;
 }
 
-int kenji::ConfigManager::globalMessageFloodguard()
+int kenji::ConfigManager::globalMessageFloodguardMs()
 {
   bool ok;
   int l_flood = self->m_settings.value("Options/global_message_floodguard", 0).toInt(&ok);
@@ -612,6 +702,7 @@ int kenji::ConfigManager::globalMessageFloodguard()
     zWarning(log::config) << "global_message_floodguard is not an int!";
     l_flood = 0;
   }
+
   return l_flood;
 }
 
@@ -624,6 +715,7 @@ int kenji::ConfigManager::packetRateLimitSoft()
     zWarning(log::config) << "packet_rate_limit_soft is not an int!";
     l_limit = 10;
   }
+
   return l_limit;
 }
 
@@ -636,6 +728,7 @@ int kenji::ConfigManager::packetRateLimitHard()
     zWarning(log::config) << "packet_rate_limit_hard is not an int!";
     l_limit = 20;
   }
+
   return l_limit;
 }
 
@@ -648,6 +741,7 @@ int kenji::ConfigManager::maxPacketSize()
     zWarning(log::config) << "max_packet_size is not an int!";
     l_size = 65536;
   }
+
   return l_size;
 }
 
@@ -660,6 +754,7 @@ int kenji::ConfigManager::modcallReasonLimit()
     zWarning(log::config) << "modcall_reason_limit is not an int!";
     l_limit = 255;
   }
+
   return l_limit;
 }
 
@@ -672,6 +767,7 @@ int kenji::ConfigManager::infoRateLimit()
     zWarning(log::config) << "info_rate_limit is not an int!";
     l_limit = 100;
   }
+
   return l_limit;
 }
 
@@ -684,6 +780,7 @@ int kenji::ConfigManager::handshakeTimeout()
     zWarning(log::config) << "handshake_timeout is not an int!";
     l_timeout = 10;
   }
+
   return l_timeout;
 }
 
@@ -696,6 +793,7 @@ int kenji::ConfigManager::sessionTimeout()
     zWarning(log::config) << "session_timeout is not an int!";
     l_timeout = 180;
   }
+
   return l_timeout;
 }
 
@@ -708,7 +806,117 @@ int kenji::ConfigManager::connectionHeadroom()
     zWarning(log::config) << "connection_headroom is not an int!";
     l_headroom = 20;
   }
+
   return l_headroom;
+}
+
+QStringList kenji::ConfigManager::badgeIds()
+{
+  QStringList badgeIds;
+  for (const QString &entry : self->m_settings.value("Badge/ids").toStringList())
+  {
+    badgeIds.append(entry.trimmed());
+  }
+
+  return badgeIds;
+}
+
+QString kenji::ConfigManager::badgePluginsDirectory()
+{
+  return self->m_settings.value("Badge/plugins_directory", "plugins").toString();
+}
+
+QString kenji::ConfigManager::badgePluginDataDirectory()
+{
+  return self->m_settings.value("Badge/plugin_data_directory", "config/badges").toString();
+}
+
+QString kenji::ConfigManager::badgeAuthPage()
+{
+  return self->m_settings.value("Badge/auth_page", "config/badges/auth.html").toString();
+}
+
+QUrl kenji::ConfigManager::badgeRedirectOrigin()
+{
+  return QUrl{self->m_settings.value("Badge/redirect_origin").toString(), QUrl::StrictMode};
+}
+
+int kenji::ConfigManager::userTokenTtl()
+{
+  bool ok;
+  int ttl = self->m_settings.value("Badge/user_token_ttl", 2592000).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "user_token_ttl is not an int!";
+    ttl = 2592000;
+  }
+
+  return ttl;
+}
+
+int kenji::ConfigManager::badgeRoundLimit()
+{
+  bool ok;
+  int limit = self->m_settings.value("Badge/round_limit", 8).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "round_limit is not an int!";
+    limit = 8;
+  }
+
+  return limit;
+}
+
+int kenji::ConfigManager::badgeSelectTimeout()
+{
+  bool ok;
+  int timeout = self->m_settings.value("Badge/select_timeout", 60).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "select_timeout is not an int!";
+    timeout = 60;
+  }
+
+  return timeout;
+}
+
+int kenji::ConfigManager::challengeTimeout()
+{
+  bool ok;
+  int timeout = self->m_settings.value("Badge/challenge_timeout", 300).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "challenge_timeout is not an int!";
+    timeout = 300;
+  }
+
+  return timeout;
+}
+
+int kenji::ConfigManager::challengeAttempts()
+{
+  bool ok;
+  int attempts = self->m_settings.value("Badge/challenge_attempts", 3).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "challenge_attempts is not an int!";
+    attempts = 3;
+  }
+
+  return attempts;
+}
+
+int kenji::ConfigManager::challengeAttemptWindow()
+{
+  bool ok;
+  int window = self->m_settings.value("Badge/challenge_attempt_window", 3600).toInt(&ok);
+  if (!ok)
+  {
+    zWarning(log::config) << "challenge_attempt_window is not an int!";
+    window = 3600;
+  }
+
+  return window;
 }
 
 QUrl kenji::ConfigManager::assetUrl()
@@ -734,6 +942,7 @@ int kenji::ConfigManager::diceMaxValue()
     zWarning(log::config) << "max_value is not an int!";
     l_value = 100;
   }
+
   return l_value;
 }
 
@@ -746,6 +955,7 @@ int kenji::ConfigManager::diceMaxDice()
     zWarning(log::config) << "max_dice is not an int!";
     l_dice = 100;
   }
+
   return l_dice;
 }
 
@@ -812,6 +1022,7 @@ int kenji::ConfigManager::passwordMinLength()
     zWarning(log::config) << "pass_min_length is not an int!";
     l_min = 8;
   }
+
   return l_min;
 }
 
@@ -824,6 +1035,7 @@ int kenji::ConfigManager::passwordMaxLength()
     zWarning(log::config) << "pass_max_length is not an int!";
     l_max = 0;
   }
+
   return l_max;
 }
 
@@ -861,6 +1073,7 @@ int kenji::ConfigManager::afkTimeout()
     zWarning(log::config) << "afk_timeout is not an int!";
     l_afk = 300;
   }
+
   return l_afk;
 }
 
@@ -873,6 +1086,7 @@ int kenji::ConfigManager::syncInterval()
     zWarning(log::config) << "sync_interval is not an int!";
     l_interval = 5;
   }
+
   return qMax(1, l_interval);
 }
 
@@ -929,11 +1143,6 @@ QUrl kenji::ConfigManager::serverlistURL()
 QString kenji::ConfigManager::serverDomainName()
 {
   return self->m_settings.value("Advertiser/hostname", "").toString();
-}
-
-bool kenji::ConfigManager::advertiseWSProxy()
-{
-  return self->m_settings.value("Advertiser/cloudflare_enabled", "false").toBool();
 }
 
 kenji::ConfigManager::help kenji::ConfigManager::commandHelp(const QString &f_command_name)

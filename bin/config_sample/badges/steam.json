@@ -1,0 +1,6 @@
+{
+    "refuse_limited": true,
+    "refuse_vac_banned": false,
+    "refuse_trade_banned": false,
+    "minimum_age": 0
+}

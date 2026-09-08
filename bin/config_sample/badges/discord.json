@@ -1,0 +1,12 @@
+{
+    "client_id": "",
+    "client_secret": "",
+    "minimum_account_age": 0,
+    "multi_factor": false,
+    "email_verified": false,
+    "guild": "",
+    "roles": [],
+    "minimum_membership": 0,
+    "require_rules_accepted": false,
+    "refuse_timed_out": false
+}

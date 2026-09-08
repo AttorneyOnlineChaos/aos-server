@@ -56,6 +56,7 @@ void kenji::CommandExtension::setAliases(const QStringList &f_aliases)
   {
     i_alias = i_alias.toLower();
   }
+
   updateMergedAliases();
 }
 
@@ -86,8 +87,10 @@ void kenji::CommandExtension::setPermissionsByCaption(const QStringList &f_capti
       zWarning(log::commands) << "error: permission" << i_caption << "does not exist";
       continue;
     }
+
     l_permissions.append(ACLRole::PERMISSION_CAPTIONS.key(l_lower_caption));
   }
+
   setPermissions(l_permissions);
 }
 
@@ -131,6 +134,7 @@ bool kenji::CommandExtensionCollection::containsExtension(const QString &f_comma
       return true;
     }
   }
+
   return false;
 }
 
@@ -148,6 +152,7 @@ kenji::CommandExtension kenji::CommandExtensionCollection::getExtension(const QS
       return i_extension;
     }
   }
+
   return CommandExtension();
 }
 
@@ -178,6 +183,7 @@ bool kenji::CommandExtensionCollection::loadFile(const QString &f_filename)
       zWarning(log::commands) << "warning: command extension" << l_command_name << "already exist";
       continue;
     }
+
     l_command_records.append(l_command_name);
 
     l_settings.beginGroup(i_group);
@@ -196,6 +202,7 @@ bool kenji::CommandExtensionCollection::loadFile(const QString &f_filename)
         l_aliases.removeAll(i_recorded_alias);
       }
     }
+
     l_alias_records.append(l_aliases);
 
     CommandExtension l_extension(l_command_name);

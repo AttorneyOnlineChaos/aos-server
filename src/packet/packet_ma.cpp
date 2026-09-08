@@ -95,6 +95,7 @@ void kenji::AOClient::process(const theory::ModActionPacket &packet)
     {
       ban.duration = packet.durationSeconds;
     }
+
     const QString timestamp = ban.until();
 
     theory::ErrorPacket l_banned;

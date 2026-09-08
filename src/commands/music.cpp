@@ -23,26 +23,31 @@ void kenji::AOClient::cmdPlay(int argc, QStringList argv)
         sendServerMessage("Invalid sample number.");
         return;
       }
+
       argv.removeLast();
       l_song = argv.join(" ");
       l_sample = l_number - 1;
     }
   }
+
   if (m_is_dj_blocked)
   {
     sendServerMessage("You are blocked from changing the music.");
     return;
   }
+
   if (l_song == "sin.mp3")
   {
     drop();
     return;
   }
+
   if ((l_song.startsWith("http://", Qt::CaseInsensitive) || l_song.startsWith("https://", Qt::CaseInsensitive)) && !m_music_manager->validateSong(l_song, ConfigManager::cdnList()))
   {
     sendServerMessage("The song you tried to play is not from an approved CDN.");
     return;
   }
+
   AreaData *l_area = server->getAreaById(areaId());
   const ACLRole l_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
   if (!l_area->owners().contains(id) && !l_area->isPlayEnabled() && !l_role.checkPermission(ACLRole::CM))
@@ -50,6 +55,7 @@ void kenji::AOClient::cmdPlay(int argc, QStringList argv)
     sendServerMessage("Free music play is disabled in this area.");
     return;
   }
+
   std::optional<QString> l_final_track;
   if (!l_song.trimmed().isEmpty())
   {
@@ -77,18 +83,21 @@ void kenji::AOClient::cmdPlayAmbience(int argc, QStringList argv)
     sendServerMessage("You are blocked from changing the ambience.");
     return;
   }
+
   AreaData *l_area = server->getAreaById(areaId());
   if (!l_area->owners().contains(id) && !l_area->isAmbiencePlayEnabled())
   { // Make sure we have permission to play music
     sendServerMessage("Free ambience play is disabled in this area.");
     return;
   }
+
   QString l_song = argv.join(" ");
   if ((l_song.startsWith("http://", Qt::CaseInsensitive) || l_song.startsWith("https://", Qt::CaseInsensitive)) && !m_music_manager->validateSong(l_song, ConfigManager::cdnList()))
   {
     sendServerMessage("The song you tried to play is not from an approved CDN.");
     return;
   }
+
   std::optional<QString> l_final_track;
   if (!l_song.trimmed().isEmpty())
   {
@@ -151,6 +160,7 @@ void kenji::AOClient::cmdBlockDj(int argc, QStringList argv)
     sendServerMessage("DJ blocked player.");
     l_target->sendServerMessage("You were blocked from changing the music by a moderator. " + getReprimand());
   }
+
   l_target->m_is_dj_blocked = true;
 }
 
@@ -183,6 +193,7 @@ void kenji::AOClient::cmdUnBlockDj(int argc, QStringList argv)
     sendServerMessage("DJ permissions restored to player.");
     l_target->sendServerMessage("A moderator restored your music permissions. " + getReprimand(true));
   }
+
   l_target->m_is_dj_blocked = false;
 }
 
@@ -255,6 +266,7 @@ void kenji::AOClient::cmdAddMusic(int argc, QStringList argv)
     {
       l_song_duration = 0;
     }
+
     l_success = m_music_manager->addCustomSong(l_song_name, l_true_name, l_song_duration, areaId());
   }
 
@@ -318,8 +330,10 @@ void kenji::AOClient::cmdJukeboxSkip(int argc, QStringList argv)
       sendServerMessageArea(l_name + " has forced a skip. Playing the next available song.");
       return;
     }
+
     sendServerMessage("Unable to skip song. Jukebox is currently empty.");
     return;
   }
+
   sendServerMessage("Unable to skip song. The jukebox is not running.");
 }

@@ -45,6 +45,7 @@ void kenji::AOClient::cmdRoll(int argc, QStringList argv)
           sendServerMessage("Invalid dice notation.");
           return;
         }
+
         int modifier = l_modifier[1].toInt(&l_mod_ok);
         l_sides = l_modifier[0].toInt(&l_sides_ok);
 
@@ -56,6 +57,7 @@ void kenji::AOClient::cmdRoll(int argc, QStringList argv)
         {
           sendServerMessage("Invalid dice notation.");
         }
+
         return;
       }
       else if (argv[0].contains('-'))
@@ -67,6 +69,7 @@ void kenji::AOClient::cmdRoll(int argc, QStringList argv)
           sendServerMessage("Invalid dice notation.");
           return;
         }
+
         int modifier = l_modifier[1].toInt(&l_mod_ok);
         l_sides = l_modifier[0].toInt(&l_sides_ok);
 
@@ -78,6 +81,7 @@ void kenji::AOClient::cmdRoll(int argc, QStringList argv)
         {
           sendServerMessage("Invalid dice notation.");
         }
+
         return;
       }
       else if (l_dice_ok && l_sides_ok)
@@ -96,10 +100,12 @@ void kenji::AOClient::cmdRoll(int argc, QStringList argv)
       l_sides = qBound(1, argv[0].toInt(), ConfigManager::diceMaxValue());
     }
   }
+
   if (argc == 2)
   {
     l_dice = qBound(1, argv[1].toInt(), ConfigManager::diceMaxDice());
   }
+
   diceThrower(l_sides, l_dice, false);
 }
 
@@ -148,6 +154,7 @@ void kenji::AOClient::cmdRollP(int argc, QStringList argv)
           sendServerMessage("Invalid dice notation.");
           return;
         }
+
         int modifier = l_modifier[1].toInt(&l_mod_ok);
         l_sides = l_modifier[0].toInt(&l_sides_ok);
 
@@ -159,6 +166,7 @@ void kenji::AOClient::cmdRollP(int argc, QStringList argv)
         {
           sendServerMessage("Invalid dice notation.");
         }
+
         return;
       }
       else if (argv[0].contains('-'))
@@ -170,6 +178,7 @@ void kenji::AOClient::cmdRollP(int argc, QStringList argv)
           sendServerMessage("Invalid dice notation.");
           return;
         }
+
         int modifier = l_modifier[1].toInt(&l_mod_ok);
         l_sides = l_modifier[0].toInt(&l_sides_ok);
 
@@ -181,6 +190,7 @@ void kenji::AOClient::cmdRollP(int argc, QStringList argv)
         {
           sendServerMessage("Invalid dice notation.");
         }
+
         return;
       }
       else if (l_dice_ok && l_sides_ok)
@@ -199,10 +209,12 @@ void kenji::AOClient::cmdRollP(int argc, QStringList argv)
       l_sides = qBound(1, argv[0].toInt(), ConfigManager::diceMaxValue());
     }
   }
+
   if (argc == 2)
   {
     l_dice = qBound(1, argv[1].toInt(), ConfigManager::diceMaxDice());
   }
+
   diceThrower(l_sides, l_dice, true);
 }
 
@@ -220,6 +232,7 @@ void kenji::AOClient::cmdTimer(int argc, QStringList argv)
     {
       l_timers.append(getAreaTimer(l_area->id, l_timer_id));
     }
+
     sendServerMessage(l_timers.join("\n"));
     return;
   }
@@ -253,6 +266,7 @@ void kenji::AOClient::cmdTimer(int argc, QStringList argv)
       sendServerMessage("You are not authorized to alter the global timer.");
       return;
     }
+
     l_requested_timer = server->globalTimer();
   }
   else
@@ -272,7 +286,7 @@ void kenji::AOClient::cmdTimer(int argc, QStringList argv)
   if (l_requested_time.isValid())
   {
     l_requested_timer->stop();
-    l_requested_timer->setDuration(QTime(0, 0).msecsTo(l_requested_time));
+    l_requested_timer->setDurationMs(QTime(0, 0).msecsTo(l_requested_time));
     l_requested_timer->setVisible(true);
     l_requested_timer->start();
     sendServerMessage("Set timer " + QString::number(l_timer_id) + " to " + argv[1] + ".");
@@ -292,6 +306,7 @@ void kenji::AOClient::cmdTimer(int argc, QStringList argv)
       {
         l_requested_timer->start();
       }
+
       sendServerMessage("Started timer " + QString::number(l_timer_id) + ".");
     }
     else if (argv[1] == "pause" || argv[1] == "stop")
@@ -384,5 +399,6 @@ void kenji::AOClient::cmdSubTheme(int argc, QStringList argv)
       l_client->shipPacket(l_subtheme_packet);
     }
   }
+
   sendServerMessageArea("Subtheme was set to " + l_subtheme);
 }

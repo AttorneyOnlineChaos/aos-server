@@ -14,6 +14,7 @@
 #include <QJsonObject>
 #include <QMetaEnum>
 #include <QSettings>
+#include <QStringList>
 #include <QUrl>
 
 namespace kenji
@@ -89,10 +90,9 @@ public:
    */
   static int serverPort();
 
-  /**
-   * @brief Returns the SSL port to listen for connections on..
-   */
-  static int securePort();
+  static bool useTls();
+  static QString tlsCertificate();
+  static QString tlsPrivateKey();
 
   /**
    * @brief Returns the server description..
@@ -173,12 +173,12 @@ public:
   /**
    * @brief Returns the duration of the message floodguard..
    */
-  static int messageFloodguard();
+  static int messageFloodguardMs();
 
   /**
    * @brief Returns the duration of the global message floodguard..
    */
-  static int globalMessageFloodguard();
+  static int globalMessageFloodguardMs();
 
   /**
    * @brief Returns the packet count limit for the warning threshold..
@@ -210,6 +210,18 @@ public:
   static int sessionTimeout();
 
   static int connectionHeadroom();
+
+  static QStringList badgeIds();
+  static QString badgePluginsDirectory();
+  static QString badgePluginDataDirectory();
+  static QString badgeAuthPage();
+  static QUrl badgeRedirectOrigin();
+  static int userTokenTtl();
+  static int badgeRoundLimit();
+  static int badgeSelectTimeout();
+  static int challengeTimeout();
+  static int challengeAttempts();
+  static int challengeAttemptWindow();
 
   /**
    * @brief Returns the URL where the server should retrieve remote assets from..
@@ -368,12 +380,6 @@ public:
    * If used allows user to set a custom IP or domain name.
    */
   static QString serverDomainName();
-
-  /**
-   * @brief Returns a dummy port instead of the real port
-   * @return
-   */
-  static bool advertiseWSProxy();
 
   /**
    * @brief A struct that contains the help information for a command.

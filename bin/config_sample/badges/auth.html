@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>Attorney Online</title>
+	<link rel="preconnect" href="https://fonts.gstatic.com">
+	<link href="https://fonts.googleapis.com/css?family=Oswald%7CRoboto+Condensed%7CPoiret+One&display=swap" rel="stylesheet">
+	<style>
+		html, body{
+			height: 100%;
+		}
+
+		body{
+			font-family: 'Oswald', sans-serif;
+			background-color: #111111;
+			margin: 0;
+			display: table;
+			width: 100%;
+			word-break: break-word;
+		}
+
+		#page{
+			display: table-cell;
+			vertical-align: middle;
+		}
+
+		img{
+			margin: 0 auto;
+			display: block;
+			width: auto;
+			max-width: 100%;
+		}
+
+		.small-line{
+			position: relative;
+			display: block;
+			overflow: hidden;
+			border-top: 1px solid #99664d;
+			padding-top: .4em;
+			margin: 1rem auto;
+			width: 100%;
+			font-size: 14px;
+		}
+
+		.card .small-line{
+			margin: 0 auto 1rem;
+			max-width: 10rem;
+		}
+
+		h1, h2, h3, h4, h5, h6{
+			font-family: 'Poiret One', serif;
+			color: #c5ac66;
+		}
+
+		.card{
+			position: relative;
+			width: 350px;
+			height: 440px;
+			margin: 0 auto;
+			border-radius: 0px;
+			background-color: transparent;
+			border: 0px;
+			text-align: center;
+		}
+
+		.card-img-top{
+			width: 350px;
+			height: 350px;
+		}
+
+		.card-body{
+			position: absolute;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background: linear-gradient(to top, black 65%, transparent);
+			background: -webkit-linear-gradient(bottom, black 65%, transparent);
+			background: -moz-linear-gradient(bottom, black 65%, transparent);
+			background-color: transparent;
+			padding: 1.25em 1.25em 2.25em;
+		}
+
+		.outline{
+			position: absolute;
+			top: 2.5%;
+			bottom: 2.5%;
+			left: 3%;
+			right: 3%;
+			pointer-events: none;
+		}
+
+		.outline:before{
+			content: "";
+			display: block;
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			left: 1.5%;
+			right: 1.5%;
+			border: #c5ac66 1px solid;
+		}
+
+		.outline:after{
+			content: "";
+			display: block;
+			position: absolute;
+			top: 1.2%;
+			bottom: 1.2%;
+			left: 0;
+			right: 0;
+			border: #c5ac66 1px solid;
+		}
+
+		.card-title{
+			font-size: 1.75em;
+			font-weight: 500;
+			margin: 1.7em 0 .45em;
+		}
+
+		.card-text{
+			color: #fff;
+			margin: 0;
+		}
+	</style>
+</head>
+<body>
+	<div id="page">
+	<div class="card">
+		<img class="card-img-top" src="https://aceattorneyonline.com/img/logo.png" alt="Attorney Online">
+		<div class="outline"></div>
+		<div class="card-body">
+			<h3 class="card-title">{{title}}</h3>
+			<div class="small-line"></div>
+			<p class="card-text">{{message}}</p>
+		</div>
+	</div>
+	</div>
+</body>
+</html>

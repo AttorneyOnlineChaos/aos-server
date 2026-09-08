@@ -10,8 +10,7 @@
 #include <qnamespace.h>
 
 const int HTTP_OK = 200;
-const int WS_REVERSE_PROXY = 80;
-const int TIMEOUT = 1000 * 60 * 4;
+const int TIMEOUT = 240;
 
 kenji::ServerPublisher::ServerPublisher(int port, int *player_count, QObject *parent)
     : QObject(parent)
@@ -24,7 +23,7 @@ kenji::ServerPublisher::ServerPublisher(int port, int *player_count, QObject *pa
   connect(timeout_timer, &QTimer::timeout, this, &ServerPublisher::publishServer);
 
   timeout_timer->setTimerType(Qt::PreciseTimer);
-  timeout_timer->setInterval(TIMEOUT);
+  timeout_timer->setInterval(TIMEOUT * 1000);
   timeout_timer->start();
   publishServer();
 }
@@ -47,12 +46,9 @@ void kenji::ServerPublisher::publishServer()
     {
       serverinfo["ip"] = ConfigManager::serverDomainName();
     }
-    if (ConfigManager::securePort() != -1)
-    {
-      serverinfo["wss_port"] = ConfigManager::securePort();
-    }
-    serverinfo["port"] = 27106;
-    serverinfo["ws_port"] = ConfigManager::advertiseWSProxy() ? WS_REVERSE_PROXY : m_port;
+
+    serverinfo["port"] = m_port;
+    serverinfo["secure"] = ConfigManager::useTls();
     serverinfo["players"] = *m_players;
     serverinfo["name"] = ConfigManager::serverName();
     serverinfo["description"] = ConfigManager::serverDescription();
@@ -105,8 +101,10 @@ void kenji::ServerPublisher::finished(QNetworkReply *f_reply)
         QJsonObject error = ref.toObject();
         zWarning(log::master) << "Error:" << error["type"].toString() << ". Message:" << error["message"].toString();
       }
+
       return;
     }
   }
+
   zInfo(log::master) << "Sucessfully advertised server to serverlist.";
 }

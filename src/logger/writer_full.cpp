@@ -20,6 +20,7 @@ void kenji::WriterFull::flush(const QString &f_entry)
     file_stream.setGenerateByteOrderMark(true);
     file_stream << f_entry;
   }
+
   l_logfile.close();
 }
 
@@ -33,5 +34,6 @@ void kenji::WriterFull::flush(const QString &f_entry, const QString &f_area_name
     file_stream.setGenerateByteOrderMark(true);
     file_stream << f_entry;
   }
+
   l_logfile.close();
 };

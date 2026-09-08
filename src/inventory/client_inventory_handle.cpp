@@ -15,10 +15,12 @@ theory::InventoryPermission kenji::ClientInventoryHandle::permission(theory::Pla
   {
     return theory::InventoryPermission::NoPermission;
   }
+
   if (playerId == _owner)
   {
     return theory::InventoryPermission::Edit;
   }
+
   // TODO This is a temporary bandaid that needs to be removed when the party system is implemented. Chop chop!
   AOClient *owner = _server.getClientByID(_owner);
   AOClient *viewer = _server.getClientByID(playerId);
@@ -26,11 +28,13 @@ theory::InventoryPermission kenji::ClientInventoryHandle::permission(theory::Pla
   {
     return theory::InventoryPermission::NoPermission;
   }
+
   AreaData *area = _server.getAreaById(owner->areaId());
   if (area && area->owners().contains(playerId))
   {
     return theory::InventoryPermission::View;
   }
+
   return theory::InventoryPermission::NoPermission;
 }
 

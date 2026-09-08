@@ -10,6 +10,7 @@ void kenji::AOClient::addStatement(theory::IcMessagePacket message)
   {
     return;
   }
+
   AreaData *area = server->getAreaById(areaId());
   int c_statement = area->statement();
   if (c_statement >= -1)
@@ -26,6 +27,7 @@ void kenji::AOClient::addStatement(theory::IcMessagePacket message)
         {
           message.textColor = 1;
         }
+
         area->recordStatement(message);
         return;
       }
@@ -41,6 +43,7 @@ void kenji::AOClient::addStatement(theory::IcMessagePacket message)
       {
         area->addStatement(c_statement, message);
       }
+
       area->addStatement(c_statement + 1, message);
       area->setTestimonyRecording(AreaData::TestimonyRecording::PLAYBACK);
     }
@@ -58,6 +61,7 @@ theory::IcMessagePacket kenji::AOClient::updateStatement(theory::IcMessagePacket
   {
     return message;
   }
+
   AreaData *area = server->getAreaById(areaId());
   int c_statement = area->statement();
   area->setTestimonyRecording(AreaData::TestimonyRecording::PLAYBACK);
@@ -72,6 +76,7 @@ theory::IcMessagePacket kenji::AOClient::updateStatement(theory::IcMessagePacket
     sendServerMessage("Updated current statement.");
     return area->testimony()[c_statement];
   }
+
   return message;
 }
 
@@ -88,5 +93,6 @@ bool kenji::AOClient::checkTestimonySymbols(const QString &message)
     sendServerMessage("Unable to add statements containing '>' or '<'.");
     return true;
   }
+
   return false;
 }

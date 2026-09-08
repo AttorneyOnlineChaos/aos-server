@@ -37,6 +37,7 @@ void kenji::AOClient::process(const theory::SplashPacket &packet)
   {
     return;
   }
+
   m_last_wtce_time = QDateTime::currentDateTime().toSecsSinceEpoch();
   server->broadcastToArea(packet, areaId());
   updateJudgeLog(l_area, this, "WT/CE");

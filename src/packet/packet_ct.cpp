@@ -58,6 +58,7 @@ void kenji::AOClient::process(const theory::OocMessagePacket &packet)
       sendServerMessage("Invalid command syntax.");
       return;
     }
+
     QString l_command = l_cmd_argv->takeFirst().trimmed().toLower();
     l_command = l_command.right(l_command.length() - 1);
     int l_cmd_argc = l_cmd_argv->length();
@@ -73,5 +74,6 @@ void kenji::AOClient::process(const theory::OocMessagePacket &packet)
     l_broadcast.message = l_message;
     server->broadcastToArea(l_broadcast, areaId());
   }
+
   m_logger.logOOC(server->getAreaById(areaId())->name(), m_ipid, name(), QString::number(id), (m_character.toString() + " " + characterName().value_or(QString())), l_message);
 }

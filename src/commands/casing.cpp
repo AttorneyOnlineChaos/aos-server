@@ -101,6 +101,7 @@ void kenji::AOClient::cmdTestimony(int argc, QStringList argv)
     QString l_ic_message = l_area->testimony().at(i).message;
     l_ooc_message.append("[" + QString::number(i) + "]" + l_ic_message + "\n");
   }
+
   sendServerMessage(l_ooc_message);
 }
 
@@ -115,6 +116,7 @@ void kenji::AOClient::cmdDeleteStatement(int argc, QStringList argv)
   {
     sendServerMessage("Unable to delete statement. No statements saved in this area.");
   }
+
   if (l_c_statement > 0 && l_area->testimony().size() > 2)
   {
     l_area->removeStatement(l_c_statement);
@@ -208,6 +210,7 @@ void kenji::AOClient::cmdSaveTestimony(int argc, QStringList argv)
         l_statement.bind(l_writer);
         l_out << QJsonDocument(l_writer.content()).toJson(QJsonDocument::Compact) << "\n";
       }
+
       sendServerMessage("Testimony saved. To load it use /loadtestimony " + l_testimony_name);
       m_testimony_saving = false;
     }
@@ -238,6 +241,7 @@ void kenji::AOClient::cmdLoadTestimony(int argc, QStringList argv)
     sendServerMessage("Unable to load testimony. Testimony name not found.");
     return;
   }
+
   if (!l_file.open(QIODevice::ReadOnly | QIODevice::Text))
   {
     sendServerMessage("Unable to load testimony. Permission denied.");
@@ -259,6 +263,7 @@ void kenji::AOClient::cmdLoadTestimony(int argc, QStringList argv)
         clearTestimony();
         return;
       }
+
       theory::IcMessagePacket l_statement;
       theory::JsonDecodeBinder l_reader{l_document.object()};
       l_statement.bind(l_reader);
@@ -268,6 +273,7 @@ void kenji::AOClient::cmdLoadTestimony(int argc, QStringList argv)
         clearTestimony();
         return;
       }
+
       l_area->addStatement(l_area->testimony().size(), l_statement);
       l_testimony_lines = l_testimony_lines + 1;
     }
@@ -278,5 +284,6 @@ void kenji::AOClient::cmdLoadTestimony(int argc, QStringList argv)
       return;
     }
   }
+
   sendServerMessage("Testimony loaded successfully. Use /examine to start playback.");
 }

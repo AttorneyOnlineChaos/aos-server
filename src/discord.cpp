@@ -42,6 +42,7 @@ QJsonDocument kenji::Discord::constructModcallJson(const QString &f_name, const 
   {
     l_json["content"] = ConfigManager::discordModcallWebhookContent();
   }
+
   l_json["embeds"] = l_array;
 
   return QJsonDocument(l_json);
@@ -69,6 +70,7 @@ QHttpMultiPart *kenji::Discord::constructLogMultipart(const QQueue<QString> &f_b
   {
     l_log.append(log_entry);
   }
+
   l_logdata.setBody(l_log.toUtf8());
   l_multipart->append(l_logdata);
   return l_multipart;
@@ -81,6 +83,7 @@ void kenji::Discord::postJsonWebhook(const QJsonDocument &f_json)
     zWarning(log::discord) << "Invalid webhook URL!";
     return;
   }
+
   m_request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
   m_nam->post(m_request, f_json.toJson());
 }
@@ -93,6 +96,7 @@ void kenji::Discord::postMultipartWebhook(QHttpMultiPart &f_multipart)
     f_multipart.deleteLater();
     return;
   }
+
   m_request.setHeader(QNetworkRequest::ContentTypeHeader, "multipart/form-data; boundary=" + f_multipart.boundary());
   QNetworkReply *l_reply = m_nam->post(m_request, &f_multipart);
   f_multipart.setParent(l_reply);

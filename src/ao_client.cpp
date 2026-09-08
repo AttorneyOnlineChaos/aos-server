@@ -160,6 +160,7 @@ void kenji::AOClient::markActive()
   {
     return;
   }
+
   m_session_timer->stop();
   setSessionStatus(SessionStatus::Active);
 }
@@ -177,6 +178,7 @@ void kenji::AOClient::markInactive()
     markExpired();
     return;
   }
+
   m_session_timer->start(l_timeout * 1000);
   setSessionStatus(SessionStatus::Inactive);
 }
@@ -187,6 +189,7 @@ void kenji::AOClient::markExpired()
   {
     return;
   }
+
   m_session_timer->stop();
   setSessionStatus(SessionStatus::Expired);
 
@@ -236,6 +239,7 @@ bool kenji::AOClient::processPendingPacket(const theory::Packet &packet)
     sendServerMessage("You are no longer AFK.");
     setStatus(theory::PlayerStatus::Online);
   }
+
   m_afk_timer->start(ConfigManager::afkTimeout() * 1000);
 
   if (!m_router.route(packet))
@@ -243,6 +247,7 @@ bool kenji::AOClient::processPendingPacket(const theory::Packet &packet)
     drop(theory::ErrorPacket::ProtocolError, "Invalid packet.");
     return false;
   }
+
   return m_session_status != SessionStatus::Expired;
 }
 
@@ -285,10 +290,12 @@ std::optional<theory::VerifyError> kenji::AOClient::verifyEvidence(const theory:
   {
     return theory::VerifyError::outOfRange(QStringLiteral("name: %1 characters, limit %2").arg(evidence.name.size()).arg(ConfigManager::maxEvidenceNameLength()));
   }
+
   if (evidence.description.size() > ConfigManager::maxEvidenceDescriptionLength())
   {
     return theory::VerifyError::outOfRange(QStringLiteral("description: %1 characters, limit %2").arg(evidence.description.size()).arg(ConfigManager::maxEvidenceDescriptionLength()));
   }
+
   return theory::NoVerifyError;
 }
 
@@ -299,6 +306,7 @@ void kenji::AOClient::changeArea(theory::AreaId new_area)
     sendServerMessage("You are already in area " + server->getAreaName(areaId()));
     return;
   }
+
   if (server->getAreaById(new_area)->lockStatus() == theory::AreaLockStatus::Locked && !server->getAreaById(new_area)->invited().contains(id) && !checkPermission(ACLRole::BYPASS_LOCKS))
   {
     sendServerMessage("Area " + server->getAreaName(new_area) + " is locked.");
@@ -309,6 +317,7 @@ void kenji::AOClient::changeArea(theory::AreaId new_area)
   {
     server->getAreaById(areaId())->changeCharacter(m_character, theory::NoCharacterId);
   }
+
   server->getAreaById(areaId())->removeClient(m_character, id);
   bool l_character_taken = false;
   if (server->getAreaById(new_area)->charactersTaken().contains(m_character))
@@ -316,6 +325,7 @@ void kenji::AOClient::changeArea(theory::AreaId new_area)
     setCharacter(theory::NoCharacterId);
     l_character_taken = true;
   }
+
   server->getAreaById(new_area)->addClient(m_character, id);
   setAreaId(new_area);
 
@@ -341,6 +351,7 @@ void kenji::AOClient::changeArea(theory::AreaId new_area)
     l_accepted.character = theory::NoCharacterId;
     shipPacket(l_accepted);
   }
+
   server->getAreaById(areaId())->shipTimers(id);
   sendServerMessage("You moved to area " + server->getAreaName(areaId()));
   if (server->getAreaById(areaId())->sendAreaMessageOnJoin())
@@ -393,6 +404,7 @@ bool kenji::AOClient::changeCharacter(theory::CharacterId char_id)
     shipPacket(l_accepted);
     return true;
   }
+
   return false;
 }
 
@@ -405,6 +417,7 @@ void kenji::AOClient::changePosition(const QString &new_pos)
   {
     l_position.position = m_pos;
   }
+
   shipPacket(l_position);
 }
 
@@ -441,6 +454,7 @@ void kenji::AOClient::handleCommand(QString command, int argc, QStringList argv)
       break;
     }
   }
+
   if (!l_has_permissions)
   {
     sendServerMessage("You do not have permission to use that command.");
@@ -631,10 +645,11 @@ void kenji::AOClient::onAfkTimeout()
   }
 }
 
-kenji::AOClient::AOClient(Server *p_server, ULogger &logger, InventoryRegistry &inventories, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &f_remote_ip, QObject *parent, theory::PlayerId playerId, theory::InventoryId f_inventory_id, MusicManager *p_manager)
+kenji::AOClient::AOClient(Server *p_server, ULogger &logger, InventoryRegistry &inventories, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &f_remote_ip, theory::UserId userId_, QObject *parent, theory::PlayerId playerId, theory::InventoryId f_inventory_id, MusicManager *p_manager)
     : QObject(parent)
     , id(playerId)
     , inventoryId(f_inventory_id)
+    , userId{userId_}
     , m_remote_ip(f_remote_ip)
     , m_socket(socket)
     , m_music_manager(p_manager)

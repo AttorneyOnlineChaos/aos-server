@@ -42,6 +42,7 @@ void kenji::AOClient::process(const theory::PlayMusicPacket &packet)
     sendServerMessage("You are blocked from changing the music.");
     return;
   }
+
   if (!l_area->isMusicAllowed() && !checkPermission(ACLRole::CM))
   {
     sendServerMessage("Music is disabled in this area.");

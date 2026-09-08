@@ -1,6 +1,7 @@
 #pragma once
 
 #include "acl_roles_handler.h"
+#include "badge/badge_defs.h"
 #include "core/pointer_types.h"
 #include "db_manager.h"
 #include "game/game_defs.h"
@@ -86,7 +87,7 @@ public:
    * @param user_id The user ID of the client.
    * @param parent Qt-based parent, passed along to inherited constructor from QObject.
    */
-  AOClient(Server *p_server, ULogger &logger, InventoryRegistry &inventories, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &f_remote_ip, QObject *parent = nullptr, theory::PlayerId playerId = theory::NoPlayerId, theory::InventoryId f_inventory_id = theory::NoInventoryId, MusicManager *p_manager = nullptr);
+  AOClient(Server *p_server, ULogger &logger, InventoryRegistry &inventories, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &f_remote_ip, theory::UserId userId_, QObject *parent = nullptr, theory::PlayerId playerId = theory::NoPlayerId, theory::InventoryId f_inventory_id = theory::NoInventoryId, MusicManager *p_manager = nullptr);
 
   /**
    * @brief Destructor for the AOClient instance.
@@ -144,6 +145,7 @@ public:
 
   const theory::PlayerId id;
   const theory::InventoryId inventoryId;
+  const theory::UserId userId;
 
   QString name() const;
   void setName(const QString &f_name);

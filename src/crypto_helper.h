@@ -132,6 +132,7 @@ public:
     {
       output.append(CryptoHelper::rand8());
     }
+
     return output;
   }
 };

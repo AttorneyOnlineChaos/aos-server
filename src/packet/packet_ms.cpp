@@ -36,6 +36,7 @@ void kenji::AOClient::process(const theory::IcMessagePacket &packet)
   {
     return;
   }
+
   theory::IcMessagePacket l_message = l_validated.value();
 
   if (m_pos != "")
@@ -54,8 +55,8 @@ void kenji::AOClient::process(const theory::IcMessagePacket &packet)
   m_logger.logIC(l_area->name(), m_ipid, name(), QString::number(id), (m_character.toString() + " " + characterName().value_or(QString())), m_last_message);
   l_area->updateLastICMessage(l_message);
 
-  l_area->startMessageFloodguard(ConfigManager::messageFloodguard());
-  server->startMessageFloodguard(ConfigManager::globalMessageFloodguard());
+  l_area->startMessageFloodguard(ConfigManager::messageFloodguardMs());
+  server->startMessageFloodguard(ConfigManager::globalMessageFloodguardMs());
 }
 
 std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const theory::IcMessagePacket &packet)
@@ -67,6 +68,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
     // Spectators cannot use IC
     return std::nullopt;
   }
+
   AreaData *l_area = server->getAreaById(areaId());
   if (l_area->lockStatus() == theory::AreaLockStatus::Spectatable && !l_area->invited().contains(id) && !checkPermission(ACLRole::BYPASS_LOCKS))
   {
@@ -101,6 +103,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
   {
     m_emote = "";
   }
+
   l_message.emote = m_emote;
 
   if (l_message.evidenceId != theory::NoEvidenceId)
@@ -220,6 +223,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
     {
       sendServerMessage("Shouts have been disabled in this area.");
     }
+
     l_message.shout = theory::Shout{};
   }
 
@@ -231,11 +235,13 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
   {
     l_incoming_showname = dezalgo(packet.characterName->trimmed());
   }
+
   if (l_incoming_showname && !(l_incoming_showname.value() == m_character.toString() || l_incoming_showname->isEmpty()) && !l_area->shownameAllowed())
   {
     sendServerMessage("Shownames are not allowed in this area!");
     return std::nullopt;
   }
+
   if (l_incoming_showname && l_incoming_showname->length() > ConfigManager::maxCharacterNameLength())
   {
     sendServerMessage("Your showname is too long! Please limit it to under " + QString::number(ConfigManager::maxCharacterNameLength()) + " characters");
@@ -247,6 +253,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
   {
     l_incoming_showname = " ";
   }
+
   l_message.characterName = l_incoming_showname;
   setCharacterName(l_incoming_showname);
 
@@ -265,6 +272,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
       {
         continue;
       }
+
       if (l_client->id == m_pairing_with && l_client->m_pairing_with == id && l_client->m_pos == m_pos)
       {
         l_message.pair->playerId = l_client->id;
@@ -277,6 +285,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
       }
     }
   }
+
   if (!l_pairing)
   {
     l_message.pair.reset();
@@ -313,6 +322,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
   {
     client_name = m_character.toString(); // fallback in case of empty ooc name
   }
+
   if ((l_area->testimonyRecording() == AreaData::TestimonyRecording::RECORDING || l_area->testimonyRecording() == AreaData::TestimonyRecording::ADD) && !l_message.message.isEmpty())
   {
     // -1 indicates title
@@ -325,6 +335,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
       l_splash.type = theory::SplashType::WitnessTestimony;
       server->broadcastToArea(l_splash, areaId());
     }
+
     addStatement(l_message);
   }
   else if (l_area->testimonyRecording() == AreaData::TestimonyRecording::UPDATE)
@@ -349,6 +360,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
         sendServerMessageArea("Last statement reached. Looping to first statement.");
       }
     }
+
     if (l_message.message == "<")
     {
       auto l_statement = l_area->jumpToStatement(l_area->statement() - 1);
@@ -363,6 +375,7 @@ std::optional<theory::IcMessagePacket> kenji::AOClient::validateIcMessage(const 
         sendServerMessage("First statement reached.");
       }
     }
+
     if (l_message.message == "=")
     {
       auto l_statement = l_area->jumpToStatement(l_area->statement());

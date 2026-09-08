@@ -1,5 +1,6 @@
 #pragma once
 
+#include "badge/badge_gateway.h"
 #include "connection.h"
 #include "core/pointer_types.h"
 #include "db_manager.h"
@@ -18,7 +19,7 @@ class ConnectionPool : public QObject
   Q_OBJECT
 
 public:
-  ConnectionPool(SessionRegistry &sessions, DBManager &database, QObject *parent = nullptr);
+  ConnectionPool(theory::BadgeGateway &gateway, SessionRegistry &sessions, DBManager &database, QObject *parent = nullptr);
   ~ConnectionPool();
 
   int count() const;
@@ -31,6 +32,7 @@ Q_SIGNALS:
   void connectionAttempted(const QString &address, const QString &ipid, const QString &hdid);
 
 private:
+  theory::BadgeGateway &_gateway;
   SessionRegistry &_sessions;
   DBManager &_database;
   QList<Connection *> _connections;

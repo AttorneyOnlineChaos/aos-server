@@ -15,6 +15,7 @@ inline int kenji::MedievalParser::randomInt(int min, int max)
   {
     return 0;
   }
+
   return QRandomGenerator::global()->bounded(min, max + 1);
 }
 
@@ -34,6 +35,7 @@ QString kenji::MedievalParser::degrootify(const QString &message)
   {
     return message;
   }
+
   bool do_pends = true;
   QString final_text = message;
 
@@ -146,8 +148,10 @@ void kenji::MedievalParser::parseDataFile()
         }
       }
     }
+
     word_replacements.append(replacement_struct);
   }
+
   if (word_replacements.isEmpty())
   {
     datafile_valid = false;
@@ -161,6 +165,7 @@ QString kenji::MedievalParser::getRandomPre()
   {
     return "";
   }
+
   if (prepended_words.isEmpty())
   {
     return "";
@@ -181,6 +186,7 @@ QString kenji::MedievalParser::getRandomPost()
   {
     return "";
   }
+
   if (appended_words.isEmpty())
   {
     return "";
@@ -212,6 +218,7 @@ kenji::MatchResult kenji::MedievalParser::wordMatches(WordReplacement *rep, Repl
     {
       return MATCHES_NOT;
     }
+
     check->used_prev_word = true;
   }
 
@@ -321,6 +328,7 @@ bool kenji::MedievalParser::replaceWord(ReplacementCheck *check, QString *rep_st
         {
           rep_str->append("st");
         }
+
         return true;
       }
     }
@@ -345,6 +353,7 @@ bool kenji::MedievalParser::replaceWord(ReplacementCheck *check, QString *rep_st
         return true;
       }
     }
+
     if (check->word.length() > 4)
     {
       // Randomly prepend "a-" to words ending in "ing", and randomly replace the trailing g with an apostrophe
@@ -366,6 +375,7 @@ bool kenji::MedievalParser::replaceWord(ReplacementCheck *check, QString *rep_st
           {
             rep_str->append(check->word.replace(check->word.length() - 1, 2, "' "));
           }
+
           return true;
         }
       }

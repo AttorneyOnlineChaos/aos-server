@@ -18,6 +18,7 @@ void kenji::AOClient::cmdLogin(int argc, QStringList argv)
     sendServerMessage("You are already logged in!");
     return;
   }
+
   switch (ConfigManager::authType())
   {
   case DataTypes::AuthType::SIMPLE:
@@ -152,6 +153,7 @@ void kenji::AOClient::cmdListPerms(int argc, QStringList argv)
       }
     }
   }
+
   sendServerMessage(l_message.join("\n"));
 }
 
@@ -214,6 +216,7 @@ void kenji::AOClient::cmdLogout(int argc, QStringList argv)
     sendServerMessage("You are not logged in!");
     return;
   }
+
   m_authenticated = false;
   m_acl_role_id = "";
   m_moderator_name = "";
@@ -233,6 +236,7 @@ void kenji::AOClient::cmdChangePassword(int argc, QStringList argv)
       sendServerMessage("You do not have permission to use that command. You must be logged in.");
       return;
     }
+
     l_username = m_moderator_name;
   }
   else if (argc == 2)

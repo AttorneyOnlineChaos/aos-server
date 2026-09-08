@@ -4,6 +4,11 @@
 #include "ao_client.h"
 #include "ao_client_registry.h"
 #include "area_data.h"
+#include "badge/badge_gateway.h"
+#include "badge/badge_server_engine.h"
+#include "badge/challenge_guard.h"
+#include "badge/guest_token_registry.h"
+#include "badge/user_database.h"
 #include "broadcaster.h"
 #include "client_game_observer.h"
 #include "command_extension.h"
@@ -13,24 +18,23 @@
 #include "db_manager.h"
 #include "discord.h"
 #include "inventory_registry.h"
-#include "join_floodguard.h"
 #include "logger/u_logger.h"
 #include "medieval_parser.h"
 #include "music_manager.h"
 #include "network/packet.h"
 #include "network/packet_factory.h"
+#include "protocol/server_info.h"
 #include "protocol/server_settings.h"
+#include "server/host_server.h"
 #include "server_publisher.h"
 #include "session_registry.h"
 #include "timer.h"
 
+#include <QByteArray>
 #include <QCoreApplication>
 #include <QDebug>
 #include <QFile>
 #include <QHash>
-#include <QHttpServer>
-#include <QHttpServerRequest>
-#include <QHttpServerResponse>
 #include <QMap>
 #include <QSettings>
 #include <QStack>
@@ -283,14 +287,6 @@ public Q_SLOTS:
   void reloadSettings();
 
   /**
-   * @brief Handles a new connection.
-   *
-   * @details The function creates an AOClient to represent the user, assigns a user ID to them, and
-   * checks if the client is banned.
-   */
-  void processPendingConnection();
-
-  /**
    * @brief Method to construct and reconstruct Discord Webhook Integration.
    *
    * @details Constructs or rebuilds Discord Object during server startup and configuration reload.
@@ -340,9 +336,7 @@ private:
   /**
    * @brief Listens for incoming connections.
    */
-  QHttpServer *m_http = nullptr;
-
-  JoinFloodguard m_join_floodguard;
+  theory::Unique<theory::HostServer> _host;
 
   /**
    * @brief Handles Discord webhooks.
@@ -381,6 +375,12 @@ private:
   theory::Unique<AOClientRegistry> m_client_registry;
 
   theory::Unique<SessionRegistry> m_session_registry;
+
+  theory::Unique<theory::UserDatabase> _users;
+  theory::Unique<theory::GuestTokenRegistry> _guests;
+  theory::Unique<theory::BadgeServerEngine> _badgeEngine;
+  theory::ChallengeGuard _guard;
+  theory::Unique<theory::BadgeGateway> _gateway;
 
   theory::Unique<ConnectionPool> m_connection_pool;
 
@@ -446,7 +446,8 @@ private:
    */
   CommandExtensionCollection *command_extension_collection;
 
-  QHttpServerResponse serverInfoResponse(const QHttpServerRequest &request);
+  theory::ServerInfo serverInfo() const;
+  void acceptConnection(QWebSocket *socket, const QHostAddress &clientAddress);
 
   QTimer *m_sync_timer;
 

@@ -112,7 +112,7 @@ public:
   /**
    * @brief Contains a list of associations between `/status X` calls and what actual status they set the area to.
    */
-  static const QMap<QString, theory::AreaStatus> map_statuses;
+  static const QMap<QString, theory::AreaStatus> MAP_STATUSES;
 
   /**
    * @brief A client in the area has left the area.

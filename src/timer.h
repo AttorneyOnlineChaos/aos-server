@@ -22,10 +22,10 @@ public:
   void stop();
   void pause(bool enabled);
 
-  qint64 duration() const;
-  void setDuration(qint64 milliseconds);
+  qint64 durationMs() const;
+  void setDurationMs(qint64 durationMs);
 
-  qint64 remaining() const;
+  qint64 remainingMs() const;
 
   bool isVisible() const;
   void setVisible(bool visible);
@@ -38,8 +38,8 @@ Q_SIGNALS:
 private:
   theory::TimerId _id;
   theory::TimerState _state = theory::TimerState::NotRunning;
-  qint64 _duration = 0;
-  qint64 _remaining = 0;
+  qint64 _durationMs = 0;
+  qint64 _remainingMs = 0;
   bool _visible = false;
   QTimer _timer;
 

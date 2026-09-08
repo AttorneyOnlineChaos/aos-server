@@ -64,6 +64,7 @@ bool kenji::MusicManager::registerArea(theory::AreaId f_area_id)
     // This area is already registered. We can't add it.
     return false;
   }
+
   m_custom_lists.insert(f_area_id, {});
   m_global_enabled.insert(f_area_id, true);
   return true;
@@ -102,6 +103,7 @@ bool kenji::MusicManager::validateSong(const QString &f_song_name, const QString
         break;
       }
     }
+
     if (!l_cdn_approved)
     {
       return false;
@@ -147,9 +149,10 @@ bool kenji::MusicManager::addCustomSong(const QString &f_song_name, const QStrin
   {
     l_track.caption = f_song_name;
   }
+
   if (f_duration > 0)
   {
-    l_track.length = f_duration;
+    l_track.lengthSeconds = f_duration;
   }
 
   QList<theory::MusicPlaylist> l_custom_list = m_custom_lists.value(f_area_id);
@@ -228,6 +231,7 @@ bool kenji::MusicManager::toggleCustomMusicEnabled(theory::AreaId f_area_id)
   {
     sanitiseCustomMusicList(f_area_id);
   }
+
   broadcastMusicList(f_area_id);
   return m_global_enabled.value(f_area_id);
 }

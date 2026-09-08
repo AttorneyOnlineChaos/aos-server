@@ -41,6 +41,7 @@ QList<kenji::AOClient *> kenji::AOClientRegistry::clientsIf(const Condition &con
       matches.append(client);
     }
   }
+
   return matches;
 }
 
@@ -69,7 +70,7 @@ int kenji::AOClientRegistry::countByAddress(const QHostAddress &address) const
   return countIf([&address](const AOClient *client) { return address.isEqual(client->m_remote_ip); });
 }
 
-kenji::AOClient *kenji::AOClientRegistry::create(const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &address)
+kenji::AOClient *kenji::AOClientRegistry::create(const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &address, theory::UserId userId)
 {
   if (_clients.size() >= _capacity)
   {
@@ -78,7 +79,7 @@ kenji::AOClient *kenji::AOClientRegistry::create(const theory::Shared<theory::Ca
 
   const theory::PlayerId id = _ids.next();
   const theory::InventoryId inventoryId = _inventories.add(theory::makeShared<ClientInventoryHandle>(id, _server));
-  AOClient *client = new AOClient(&_server, _logger, _inventories, socket, address, this, id, inventoryId, &_musicManager);
+  AOClient *client = new AOClient(&_server, _logger, _inventories, socket, address, userId, this, id, inventoryId, &_musicManager);
   _clients.insert(id, client);
   Q_EMIT clientAdded(id);
   return client;

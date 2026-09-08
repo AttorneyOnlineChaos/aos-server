@@ -34,16 +34,19 @@ void kenji::AOClient::cmdCM(int argc, QStringList argv)
       sendServerMessage("That doesn't look like a valid ID.");
       return;
     }
+
     if (l_owner_candidate == nullptr)
     {
       sendServerMessage("Unable to find client with ID " + argv[0] + ".");
       return;
     }
+
     if (l_area->owners().contains(l_owner_candidate->id))
     {
       sendServerMessage("User is already a CM in this area.");
       return;
     }
+
     l_area->addOwner(l_owner_candidate->id);
     sendServerMessageArea(l_owner_candidate->name() + " is now CM in this area.");
   }
@@ -86,6 +89,7 @@ void kenji::AOClient::cmdUnCM(int argc, QStringList argv)
           }
         }
       }
+
       sendServerMessage("All CMs except yourself have been unCMed.");
       return;
     }
@@ -97,17 +101,20 @@ void kenji::AOClient::cmdUnCM(int argc, QStringList argv)
       sendServerMessage("Invalid user ID.");
       return;
     }
+
     if (!l_area->owners().contains(l_uid))
     {
       sendServerMessage("That user is not CMed.");
       return;
     }
+
     AOClient *l_target = server->getClientByID(l_uid);
     if (l_target == nullptr)
     {
       sendServerMessage("No client with that ID found.");
       return;
     }
+
     sendServerMessage(l_target->name() + " was successfully unCMed.");
     l_target->sendServerMessage("You have been unCMed by a moderator.");
   }
@@ -144,6 +151,7 @@ void kenji::AOClient::cmdInvite(int argc, QStringList argv)
     sendServerMessage("That ID is already on the invite list.");
     return;
   }
+
   sendServerMessage("You invited ID " + argv[0]);
   target_client->sendServerMessage("You were invited and given access to " + l_area->name());
 }
@@ -177,6 +185,7 @@ void kenji::AOClient::cmdUnInvite(int argc, QStringList argv)
     sendServerMessage("That ID is not on the invite list.");
     return;
   }
+
   sendServerMessage("You uninvited ID " + argv[0]);
   target_client->sendServerMessage("You were uninvited from " + l_area->name());
 }
@@ -192,6 +201,7 @@ void kenji::AOClient::cmdLock(int argc, QStringList argv)
     sendServerMessage("This area is already locked.");
     return;
   }
+
   sendServerMessageArea("This area is now locked.");
   area->lock();
   const QList<AOClient *> l_clients = server->getClients();
@@ -215,6 +225,7 @@ void kenji::AOClient::cmdSpectatable(int argc, QStringList argv)
     sendServerMessage("This area is already in spectate mode.");
     return;
   }
+
   sendServerMessageArea("This area is now spectatable.");
   l_area->spectatable();
   const QList<AOClient *> l_clients = server->getClients();
@@ -238,6 +249,7 @@ void kenji::AOClient::cmdUnLock(int argc, QStringList argv)
     sendServerMessage("This area is not locked.");
     return;
   }
+
   sendServerMessageArea("This area is now unlocked.");
   l_area->unlock();
 }
@@ -257,6 +269,7 @@ void kenji::AOClient::cmdGetAreas(int argc, QStringList argv)
       l_entries.append(l_cur_area_lines);
     }
   }
+
   sendServerMessage(l_entries.join("\n"));
 }
 
@@ -280,6 +293,7 @@ void kenji::AOClient::cmdArea(int argc, QStringList argv)
     sendServerMessage("That does not look like a valid area ID.");
     return;
   }
+
   changeArea(l_new_area);
 }
 
@@ -324,6 +338,7 @@ void kenji::AOClient::cmdAreaKick(int argc, QStringList argv)
         }
       }
     }
+
     sendServerMessage("All clients kicked to area " + target_area->displayName() + ".");
     return;
   }
@@ -336,11 +351,13 @@ void kenji::AOClient::cmdAreaKick(int argc, QStringList argv)
     sendServerMessage("That does not look like a valid ID.");
     return;
   }
+
   if (server->getAreaById(areaId())->owners().contains(l_idx))
   {
     sendServerMessage("You cannot kick another CM!");
     return;
   }
+
   AOClient *l_client_to_kick = server->getClientByID(l_idx);
   if (l_client_to_kick == nullptr)
   {
@@ -352,6 +369,7 @@ void kenji::AOClient::cmdAreaKick(int argc, QStringList argv)
     sendServerMessage("That client is not in this area.");
     return;
   }
+
   l_client_to_kick->changeArea(target_area_id);
   l_area->uninvite(l_client_to_kick->id);
   l_client_to_kick->sendServerMessage("You have been kicked to area " + target_area->displayName() + ".");
@@ -371,6 +389,7 @@ void kenji::AOClient::cmdSetBackground(int argc, QStringList argv)
       sendServerMessage("Spectators are blocked from changing the background.");
       return;
     }
+
     if (server->getBackgrounds().contains(f_background, Qt::CaseInsensitive) || area->ignoreBgList() == true)
     {
       area->setBackground(f_background);
@@ -389,6 +408,7 @@ void kenji::AOClient::cmdSetBackground(int argc, QStringList argv)
       {
         l_ambience.track = ambience_name;
       }
+
       server->broadcastToArea(l_ambience, areaId());
       sendServerMessageArea(m_character.toString() + " changed the background to " + f_background);
     }
@@ -420,6 +440,7 @@ void kenji::AOClient::cmdSetSide(int argc, QStringList argv)
   {
     l_side = l_joined_side;
   }
+
   area->setSide(l_side);
   theory::BackgroundPacket l_background;
   l_background.background = area->background();
@@ -483,13 +504,13 @@ void kenji::AOClient::cmdStatus(int argc, QStringList argv)
   {
     l_status = l_shortcuts.value(l_arg);
   }
-  else if (AreaData::map_statuses.contains(l_arg))
+  else if (AreaData::MAP_STATUSES.contains(l_arg))
   {
-    l_status = AreaData::map_statuses.value(l_arg);
+    l_status = AreaData::MAP_STATUSES.value(l_arg);
   }
   else
   {
-    sendServerMessage(QStringLiteral("Unknown status '%1'; expected one of: %2").arg(l_arg, AreaData::map_statuses.keys().join(", ")));
+    sendServerMessage(QStringLiteral("Unknown status '%1'; expected one of: %2").arg(l_arg, AreaData::MAP_STATUSES.keys().join(", ")));
     return;
   }
 
@@ -508,6 +529,7 @@ void kenji::AOClient::cmdJudgeLog(int argc, QStringList argv)
     sendServerMessage("There have been no judge actions in this area.");
     return;
   }
+
   QString l_message = l_area->judgelog().join("\n");
   // Judgelog contains an IPID, so we shouldn't send that unless the caller has appropriate permissions
   if (checkPermission(ACLRole::KICK) || checkPermission(ACLRole::BAN))
@@ -612,6 +634,7 @@ void kenji::AOClient::cmdWebfiles(int argc, QStringList argv)
     l_listed_characters.append(l_client->character());
     l_weblinks.append("https://attorneyonline.github.io/webDownloader/index.html?char=" + l_client->character().toString());
   }
+
   sendServerMessage("Character files:\n" + l_weblinks.join("\n"));
 }
 

@@ -25,7 +25,7 @@ public:
   int capacity() const;
   int count() const;
 
-  AOClient *create(const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &address);
+  AOClient *create(const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &address, theory::UserId userId);
   void remove(AOClient *client);
 
   AOClient *client(theory::PlayerId id) const;

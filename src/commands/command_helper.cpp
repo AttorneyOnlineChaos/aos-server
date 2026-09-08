@@ -34,7 +34,8 @@ QStringList kenji::AOClient::buildAreaList(theory::AreaId area_idx)
   default:
     break;
   }
-  entries.append("[" + QString::number(area->playerCount()) + " users][" + AreaData::map_statuses.key(area->status()) + "]");
+
+  entries.append("[" + QString::number(area->playerCount()) + " users][" + AreaData::MAP_STATUSES.key(area->status()) + "]");
   const QList<AOClient *> l_clients = server->getClients();
   for (AOClient *l_client : l_clients)
   {
@@ -45,25 +46,31 @@ QStringList kenji::AOClient::buildAreaList(theory::AreaId area_idx)
       {
         char_entry += "Spectator";
       }
+
       if (l_client->characterName())
       {
         char_entry += " (" + l_client->characterName().value() + ")";
       }
+
       if (l_client->status() == theory::PlayerStatus::Away)
       {
         char_entry += " [AFK]";
       }
+
       if (area->owners().contains(l_client->id))
       {
         char_entry.insert(0, "[CM] ");
       }
+
       if (m_authenticated)
       {
         char_entry += " (" + l_client->getIpid() + "): " + l_client->name();
       }
+
       entries.append(char_entry);
     }
   }
+
   return entries;
 }
 
@@ -79,11 +86,13 @@ void kenji::AOClient::diceThrower(int sides, int dice, bool p_roll, int roll_mod
     sendServerMessage("Dice or side number out of bounds.");
     return;
   }
+
   QStringList results;
   for (int i = 1; i <= dice; i++)
   {
     results.append(QString::number(AOClient::genRand(1, sides) + roll_modifier));
   }
+
   QString total_results = results.join(" ");
   if (p_roll)
   {
@@ -95,8 +104,10 @@ void kenji::AOClient::diceThrower(int sides, int dice, bool p_roll, int roll_mod
     {
       sendServerMessage("You rolled a " + QString::number(dice) + "d" + QString::number(sides) + ". Results: " + total_results);
     }
+
     return;
   }
+
   if (roll_modifier)
   {
     sendServerMessageArea(name() + " rolled a " + QString::number(dice) + "d" + QString::number(sides) + "+" + QString::number(roll_modifier) + ". Results: " + total_results);
@@ -118,6 +129,7 @@ QString kenji::AOClient::getAreaTimer(theory::AreaId area_idx, int timer_idx)
   {
     l_timer = server->getAreaById(area_idx)->timer(timer_idx);
   }
+
   QString l_timer_name = "Timer " + QString::number(timer_idx);
 
   if (l_timer == nullptr)
@@ -130,7 +142,7 @@ QString kenji::AOClient::getAreaTimer(theory::AreaId area_idx, int timer_idx)
     return l_timer_name + " is inactive.";
   }
 
-  QTime l_current_time = QTime(0, 0).addMSecs(l_timer->remaining());
+  QTime l_current_time = QTime(0, 0).addMSecs(l_timer->remainingMs());
   if (l_timer->state() == theory::TimerState::Paused)
   {
     return l_timer_name + " is paused at " + l_current_time.toString("hh:mm:ss.zzz");
@@ -201,6 +213,7 @@ QString kenji::AOClient::getReprimand(bool f_positive)
   {
     return QString();
   }
+
   return l_list.at(genRand(0, l_list.size() - 1));
 }
 
@@ -227,6 +240,7 @@ bool kenji::AOClient::checkPasswordRequirements(const QString &f_username, const
     {
       return false;
     }
+
     if (f_password.toUpper() == f_password)
     {
       return false;
@@ -271,6 +285,7 @@ void kenji::AOClient::sendNotice(const QString &f_notice, bool f_global)
   {
     l_message += "server-wide ";
   }
+
   l_message += "notice:\n\n" + f_notice;
 
   if (f_global)

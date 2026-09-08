@@ -34,6 +34,7 @@ kenji::AreaData::AreaData(const QString &p_name, theory::AreaId p_index, theory:
   {
     m_name = "Unnamed Area";
   }
+
   m_display_name = "[" + QString::number(id) + "] " + m_name;
   QSettings *areas_ini = ConfigManager::areaData();
   areas_ini->beginGroup(p_name);
@@ -66,13 +67,14 @@ kenji::AreaData::AreaData(const QString &p_name, theory::AreaId p_index, theory:
 
     connect(l_timer, &Timer::visibilityChanged, this, [this, l_timer] { m_broadcaster.broadcastToArea(makeTimerPacket(*l_timer, theory::TimerPacket::Visibility), id); });
   }
+
   m_jukebox_timer = new QTimer();
   connect(m_jukebox_timer, &QTimer::timeout, this, &AreaData::switchJukeboxSong);
   m_message_floodguard_timer = new QTimer(this);
   connect(m_message_floodguard_timer, &QTimer::timeout, this, &AreaData::allowMessage);
 }
 
-const QMap<QString, theory::AreaStatus> kenji::AreaData::map_statuses = {
+const QMap<QString, theory::AreaStatus> kenji::AreaData::MAP_STATUSES = {
     {"IDLE", theory::AreaStatus::Idle},
     {"ROLEPLAY", theory::AreaStatus::Roleplay},
     {"CASING", theory::AreaStatus::Casing},
@@ -91,6 +93,7 @@ void kenji::AreaData::removeClient(theory::CharacterId f_charId, theory::PlayerI
   {
     m_charactersTaken.removeAll(f_charId);
   }
+
   m_joined_ids.removeAll(f_userId);
 }
 
@@ -102,6 +105,7 @@ void kenji::AreaData::addClient(theory::CharacterId f_charId, theory::PlayerId f
   {
     m_charactersTaken.append(f_charId);
   }
+
   m_joined_ids.append(f_userId);
   Q_EMIT userJoinedArea(id, f_userId);
   // Send out ambience as well.
@@ -141,6 +145,7 @@ bool kenji::AreaData::removeOwner(theory::PlayerId f_clientId)
     {
       m_playcmd = m_playcmd_default;
     }
+
     Q_EMIT ownersChanged();
   }
 
@@ -271,6 +276,7 @@ void kenji::AreaData::synchronize()
     {
       continue;
     }
+
     m_broadcaster.broadcastToArea(makeTimerPacket(*l_timer, theory::TimerPacket::Tick), id);
   }
 }
@@ -303,6 +309,7 @@ bool kenji::AreaData::changeCharacter(theory::CharacterId f_from, theory::Charac
     {
       m_charactersTaken.removeAll(f_from);
     }
+
     m_charactersTaken.append(f_to);
     return true;
   }
@@ -462,6 +469,7 @@ QPair<theory::IcMessagePacket, kenji::AreaData::TestimonyProgress> kenji::AreaDa
     m_statement = 1;
     return {m_testimony.at(m_statement), TestimonyProgress::LOOPED};
   }
+
   if (m_statement <= 1)
   {
     m_statement = 1;
@@ -534,6 +542,7 @@ void kenji::AreaData::setMusic(const std::optional<QString> &f_current_song, int
     clearMusic();
     return;
   }
+
   m_currentMusic = f_current_song;
   m_currentMusicSample = f_sample;
 }
@@ -698,7 +707,7 @@ QString kenji::AreaData::addJukeboxSong(const QString &f_song)
     // Retrieve song information.
     const auto l_song = m_music_manager->findTrack(f_song, id);
 
-    if (l_song && l_song->length > 0)
+    if (l_song && l_song->lengthSeconds > 0)
     {
       if (m_jukebox_queue.size() == 0)
       {
@@ -706,9 +715,10 @@ QString kenji::AreaData::addJukeboxSong(const QString &f_song)
         l_music_change.track = l_song->fileName;
         l_music_change.channel = theory::MusicChannel::Music;
         m_broadcaster.broadcastToArea(l_music_change, id);
-        m_jukebox_timer->start(l_song->length * 1000);
+        m_jukebox_timer->start(l_song->lengthSeconds * 1000);
         setMusic(f_song, 0);
       }
+
       m_jukebox_queue.append(f_song);
       return "Song added to Jukebox.";
     }
@@ -717,6 +727,7 @@ QString kenji::AreaData::addJukeboxSong(const QString &f_song)
       return "Unable to add song. Duration shorter than 1.";
     }
   }
+
   return "Unable to add song. Song already in Jukebox.";
 }
 
@@ -749,11 +760,12 @@ void kenji::AreaData::switchJukeboxSong()
   {
     l_music_change.track = l_song->fileName;
   }
+
   m_broadcaster.broadcastToArea(l_music_change, id);
 
-  if (l_song && l_song->length > 0)
+  if (l_song && l_song->lengthSeconds > 0)
   {
-    m_jukebox_timer->start(l_song->length * 1000);
+    m_jukebox_timer->start(l_song->lengthSeconds * 1000);
     setMusic(l_song->fileName, 0);
     return;
   }

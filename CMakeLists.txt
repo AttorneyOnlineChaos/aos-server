@@ -82,8 +82,6 @@ qt_add_library(kenji STATIC
   src/inventory_handle.h
   src/inventory_registry.cpp
   src/inventory_registry.h
-  src/join_floodguard.cpp
-  src/join_floodguard.h
   src/medieval_parser.cpp
   src/medieval_parser.h
   src/music_manager.cpp
@@ -112,7 +110,9 @@ target_link_libraries(kenji PUBLIC
     Qt6::Network
     Qt6::WebSockets
     Qt6::HttpServer
+    theory-badge-server
     theory-protocol
+    theory-server
 )
 
 target_link_libraries(kenji-runtime PRIVATE kenji)

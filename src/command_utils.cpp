@@ -19,6 +19,7 @@ std::optional<QStringList> kenji::CommandParser::parseCommand(const QString &tex
       {
         return std::nullopt;
       }
+
       ++i;
       token.append(text.at(i));
       open = true;
@@ -33,6 +34,7 @@ std::optional<QStringList> kenji::CommandParser::parseCommand(const QString &tex
         {
           return std::nullopt;
         }
+
         quoted = false;
         continue;
       }
@@ -41,6 +43,7 @@ std::optional<QStringList> kenji::CommandParser::parseCommand(const QString &tex
       {
         return std::nullopt;
       }
+
       quoted = true;
       open = true;
       continue;
@@ -54,6 +57,7 @@ std::optional<QStringList> kenji::CommandParser::parseCommand(const QString &tex
         token.clear();
         open = false;
       }
+
       continue;
     }
 
@@ -70,5 +74,6 @@ std::optional<QStringList> kenji::CommandParser::parseCommand(const QString &tex
   {
     tokens.append(token);
   }
+
   return tokens;
 }
