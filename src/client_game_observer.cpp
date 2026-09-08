@@ -82,13 +82,13 @@ bool kenji::ClientGameObserver::isEvidenceVisible(theory::InventoryId inventoryI
   {
     return true;
   }
-  if (permission < theory::InventoryPermission::View || !isInventoryReachable(inventoryId))
+  if (!isInventoryReachable(inventoryId))
   {
     return false;
   }
   // TODO This is a temporary bandaid that needs to be removed when the party system is implemented. Chop chop!
   const bool personal = _server.getAreaById(_viewer.areaId())->inventoryId != inventoryId;
-  return evidence.revealed || personal;
+  return evidence.revealed || (personal && permission >= theory::InventoryPermission::View);
 }
 
 void kenji::ClientGameObserver::connectClient(AOClient *client)
