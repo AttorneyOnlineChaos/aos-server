@@ -1,5 +1,6 @@
 #pragma once
 
+#include "badge/badge_defs.h"
 #include "config_manager.h"
 #include "logger/writer_full.h"
 #include "logger/writer_modcall.h"
@@ -41,47 +42,37 @@ public Q_SLOTS:
   /**
    * @brief Adds an IC log entry to the area buffer and writes it to the respective log format.
    */
-  void logIC(const QString &f_area_name, const QString &f_ipid, const QString &f_ooc_name, const QString &f_id, const QString &f_char_name, const QString &f_message);
+  void logIC(const QString &f_area_name, theory::UserId f_user_id, const QString &f_ooc_name, const QString &f_id, const QString &f_char_name, const QString &f_message);
 
   /**
    * @brief Adds a music log entry to the area buffer and writes it to the respective log format.
    */
-  void logMusic(const QString &f_char_name, const QString &f_ooc_name, const QString &f_ipid, const QString &f_area_name, const QString &f_track);
+  void logMusic(const QString &f_char_name, const QString &f_ooc_name, theory::UserId f_user_id, const QString &f_area_name, const QString &f_track);
 
   /**
    * @brief Adds an OOC log entry to the area buffer and writes it to the respective log format.
    */
-  void logOOC(const QString &f_area_name, const QString &f_ipid, const QString &f_ooc_name, const QString &f_id, const QString &f_char_name, const QString &f_message);
-
-  /**
-   * @brief Adds an login attempt to the area buffer and writes it to the respective log format.
-   */
-  void logLogin(const QString &f_char_name, const QString &f_ooc_name, const QString &f_moderator_name, const QString &f_ipid, const QString &f_area_name, const bool &f_success);
+  void logOOC(const QString &f_area_name, theory::UserId f_user_id, const QString &f_ooc_name, const QString &f_id, const QString &f_char_name, const QString &f_message);
 
   /**
    * @brief Adds a command usage to the area buffer and writes it to the respective log format.
    */
-  void logCMD(const QString &f_char_name, const QString &f_ipid, const QString &f_ooc_name, const QString &f_command, const QStringList &f_args, const QString &f_area_name);
+  void logCMD(const QString &f_char_name, theory::UserId f_user_id, const QString &f_ooc_name, const QString &f_command, const QStringList &f_args, const QString &f_area_name);
 
   /**
    * @brief Adds a player kick to the area buffer and writes it to the respective log format.
    */
-  void logKick(const QString &f_moderator, const QString &f_target_ipid);
+  void logKick(theory::UserId f_moderator, theory::UserId f_target);
 
   /**
    * @brief Adds a player ban to the area buffer and writes it to the respective log format.
    */
-  void logBan(const QString &f_moderator, const QString &f_target_ipid, const QString &f_duration);
+  void logBan(theory::UserId f_moderator, theory::UserId f_target, const QString &f_duration);
 
   /**
    * @brief Adds a modcall event to the area buffer, also triggers modcall writing.
    */
-  void logModcall(const QString &f_area_name, const QString &f_ipid, const QString &f_ooc_name, const QString &f_id, const QString &f_char_name);
-
-  /**
-   * @brief Logs any connection attempt to the server, wether sucessful or not.
-   */
-  void logConnectionAttempt(const QString &f_ip_address, const QString &f_ipid, const QString &f_hwid);
+  void logModcall(const QString &f_area_name, theory::UserId f_user_id, const QString &f_ooc_name, const QString &f_id, const QString &f_char_name);
 
   /**
    * @brief Loads template strings for the logger.
@@ -95,6 +86,8 @@ private:
    * @param Formatted QString to be added into the buffer.
    */
   void updateAreaBuffer(const QString &f_areaName, const QString &f_log_entry);
+
+  static QString logIdentity(theory::UserId id);
 
   /**
    * @brief QMap of all available area buffers.
@@ -122,14 +115,9 @@ private:
   QHash<QString, QString> m_logtext{{"ic", "[%1][%5][IC][%2(%3)][%4]%6"},
                                     {"music", "[%1][%5][MUSIC][%2(%3)][%4]%6"},
                                     {"ooc", "[%1][%5][OOC][%2(%3)][%4]%6"},
-                                    {"login", "[%1][LOGIN][%2][%3][%4(%5)]"},
-                                    {"cmdlogin", "[%1][%2][LOGIN][%5][%3(%4)]"},
-                                    {"cmdrootpass", "[%1][%2][ROOTPASS][%5][%3(%4)]"},
-                                    {"adduser", "[%1][%2][USERADD][%6][%3(%4)]%5"},
                                     {"cmd", "[%1][%2][CMD][%7][%3(%4)]/%5 %6"},
                                     {"kick", "[%1][%2][KICK][%3]"},
                                     {"ban", "[%1][%2][BAN][%3][%4]"},
-                                    {"modcall", "[%1][%2][MODCALL][%3][%4][%5(%6)]"},
-                                    {"connect", "[%1][CONNECT][%2][%3][%4]"}};
+                                    {"modcall", "[%1][%2][MODCALL][%3][%4][%5(%6)]"}};
 };
 } // namespace kenji

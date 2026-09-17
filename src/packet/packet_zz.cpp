@@ -45,7 +45,7 @@ void kenji::AOClient::process(const theory::ModCallPacket &packet)
     }
   }
 
-  m_logger.logModcall(l_areaName, m_ipid, name(), QString::number(id), (m_character.toString() + " " + characterName().value_or(QString())));
+  m_logger.logModcall(l_areaName, userId, name(), QString::number(id), (m_character.toString() + " " + characterName().value_or(QString())));
 
   if (ConfigManager::discordModcallWebhookEnabled())
   {

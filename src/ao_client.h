@@ -3,7 +3,6 @@
 #include "acl_roles_handler.h"
 #include "badge/badge_defs.h"
 #include "core/pointer_types.h"
-#include "db_manager.h"
 #include "game/game_defs.h"
 #include "game/game_error.h"
 #include "inventory_handle.h"
@@ -21,6 +20,7 @@
 #include "protocol/packets/moderation_packets.h"
 #include "protocol/packets/music_packets.h"
 #include "protocol/packets/session_packets.h"
+#include "server_database.h"
 
 #include <QDateTime>
 #include <QHostAddress>
@@ -96,30 +96,16 @@ public:
    */
   ~AOClient();
 
-  /**
-   * @brief Getter for the client's IPID.
-   *
-   * @return The IPID.
-   *
-   * @see #ipid
-   */
-  QString getIpid() const;
+  bool isGuest() const;
 
   /**
-   * @brief Getter for the client's HWID.
+   * @brief Returns true if the client has a role.
    *
-   * @return The HWID.
-   *
-   * @see #hwid
-   */
-  QString getHwid() const;
-
-  /**
-   * @brief Returns true if the client has logged-in as a role.
-   *
-   * @return True if loggged-in, false otherwise.
+   * @return True if the client has the role, false otherwise.
    */
   bool isAuthenticated() const;
+  void applyRole(const QString &roleId);
+  void clearRole();
 
   enum class SessionStatus
   {
@@ -166,11 +152,6 @@ public:
    * @brief The IP address of the client.
    */
   QHostAddress m_remote_ip;
-
-  /**
-   * @brief If using advanced authentication, this is the moderator name that the client has logged in with.
-   */
-  QString m_moderator_name = "";
 
   /**
    * @brief The out-of-character name of the client, generally the nickname of the user themself.
@@ -273,29 +254,9 @@ public:
   bool m_testimony_saving = false;
 
   /**
-   * @brief If true, the client's next OOC message will be interpreted as a moderator login.
-   */
-  bool m_is_logging_in = false;
-
-  /**
-   * @brief The hardware ID of the client.
-   *
-   * @details Generated based on the client's own supplied hardware ID.
-   * The client supplied hardware ID is generally a machine unique ID.
-   */
-  QString m_hwid;
-
-  /**
    * @brief The network socket used by the client.
    */
   theory::Shared<theory::CargoSocket> m_socket;
-
-  /**
-   * @brief The IPID of the client.
-   *
-   * @details Generated based on the client's IP, but cannot be reversed to identify the client's IP.
-   */
-  QString m_ipid;
 
   /**
    * @brief Checks if the client's ACL role has permission for the given permission.
@@ -351,13 +312,6 @@ public:
    * @param char_id The character ID of the client's new character.
    */
   bool changeCharacter(theory::CharacterId char_id);
-
-  /**
-   * @brief A helper function for logging in a client as moderator.
-   *
-   * @param message The OOC message the client has sent.
-   */
-  void loginAttempt(const QString &message);
 
   /**
    * @brief Changes the area the client is in.
@@ -578,108 +532,33 @@ private:
   ///@{
 
   /**
-   * @brief Sets the client to be in the process of logging in, setting is_logging_in to **true**.
-   *
-   * @details No arguments.
-   *
-   * @iscommand
-   */
-  void cmdLogin(int argc, QStringList argv);
-
-  /**
-   * @brief Starts the authorisation type change from `"simple"` to `"advanced"`.
-   *
-   * @details No arguments.
-   *
-   * @iscommand
-   */
-  void cmdChangeAuth(int argc, QStringList argv);
-
-  /**
-   * @brief Sets the root user's password.
-   *
-   * @details Accepts a single argument that will be the **root user's password**.
-   *
-   * @iscommand
-   *
-   * @pre AOClient::cmdChangeAuth()
-   */
-  void cmdSetRootPass(int argc, QStringList argv);
-
-  /**
-   * @brief Adds a user to the moderators in `"advanced"` authorisation type.
-   *
-   * @details The first argument is the **user's name**, the second is their **password**.
-   *
-   * @iscommand
-   */
-  void cmdAddUser(int argc, QStringList argv);
-
-  /**
-   * @brief Removes a user from the moderators in `"advanced"` authorisation type.
-   *
-   * @details Takes the **targer user's name** as the argument.
-   *
-   * @iscommand
-   */
-  void cmdRemoveUser(int argc, QStringList argv);
-
-  /**
-   * @brief Lists the permission of a given user.
+   * @brief Lists the permissions of a player.
    *
    * @details If called without argument, lists the caller's permissions.
    *
-   * If called with one argument, **a username**, lists that user's permissions.
+   * If called with one argument, **a player ID**, lists that player's permissions.
    *
    * @iscommand
    */
   void cmdListPerms(int argc, QStringList argv);
 
   /**
-   * @brief Sets the role of the user.
+   * @brief Sets the role of a player.
    *
-   * @details The first argument is the **target user**, the second is the **role** (in string form) to set to that user.
+   * @details The first argument is the **target player ID**, the second is the **role** to assign to that user; it is applied at once to every connected client of the user and again whenever the user connects.
    *
    * @iscommand
    */
   void cmdSetPerms(int argc, QStringList argv);
 
   /**
-   * @brief Removes the role from a given user.
+   * @brief Removes the role from a player's user.
    *
-   * @details The first argument is the **target user**, the second is the **permission** (in string form) to remove from that user.
+   * @details The only argument is the **target player ID**.
    *
    * @iscommand
    */
   void cmdRemovePerms(int argc, QStringList argv);
-
-  /**
-   * @brief Lists all users in the server's database.
-   *
-   * @details No arguments.
-   *
-   * @iscommand
-   */
-  void cmdListUsers(int argc, QStringList argv);
-
-  /**
-   * @brief Logs the caller out from their moderator user.
-   *
-   * @details No arguments.
-   *
-   * @iscommand
-   */
-  void cmdLogout(int argc, QStringList argv);
-
-  /**
-   * @brief Changes a moderator's password.
-   *
-   * @details If it is called with **one argument**, that argument is the **new password** to change to.
-   *
-   * If it is called with **two arguments**, the first argument is the **new password** to change to,
-   * and the second argument is the **username** of the moderator to change the password of.
-   */
-  void cmdChangePassword(int argc, QStringList argv);
 
   ///@}
 
@@ -1209,6 +1088,8 @@ private:
   void cmdKickOther(int argc, QStringList argv);
 
   void cmdDc(int argc, QStringList argv);
+
+  void cmdWipeTokens(int argc, QStringList argv);
 
   ///@}
 
@@ -1909,7 +1790,7 @@ private:
    *
    * @return The parsed text, converted into their respective durations, summed up, then converted into seconds.
    */
-  long long parseTime(const QString &input);
+  theory::BanDuration parseTime(const QString &input);
   QString getReprimand(bool f_positive = false);
 
   /**
@@ -1920,16 +1801,7 @@ private:
    */
   void clearTestimony();
 
-  /**
-   * @brief Checks if a password meets the server's password requirements.
-   *
-   * @param username The chosen username.
-   *
-   * @param password The password to check.
-   *
-   * @return True if the password meets the requirements, otherwise false.
-   */
-  bool checkPasswordRequirements(const QString &f_username, const QString &f_password);
+  QString formatBan(const theory::BanRecord &ban);
 
   /**
    * @brief Sends a server notice.
@@ -1949,14 +1821,6 @@ private:
    */
   bool checkTestimonySymbols(const QString &message);
   ///@}
-
-  /**
-   * @brief A helper variable that is used to direct the called of the `/changeAuth` command through the process
-   * of changing the authorisation method from simple to advanced.
-   *
-   * @see cmdChangeAuth and cmdSetRootPass
-   */
-  bool change_auth_started = false;
 
   /**
    * @brief Timestamp (in seconds since Epoch) of the current tick.

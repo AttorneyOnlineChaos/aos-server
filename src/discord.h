@@ -1,5 +1,6 @@
 #pragma once
 
+#include "badge/badge_defs.h"
 #include "config_manager.h"
 
 #include <QCoreApplication>
@@ -51,7 +52,7 @@ public Q_SLOTS:
    * @param f_duration The date the ban expires.
    * @param f_reason The reason of the ban.
    */
-  void onBanWebhookRequested(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID);
+  void onBanWebhookRequested(theory::UserId f_user_id, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID);
 
 private:
   /**
@@ -117,6 +118,6 @@ private Q_SLOTS:
    *
    * @return A JSON document for the ban.
    */
-  QJsonDocument constructBanJson(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID);
+  QJsonDocument constructBanJson(theory::UserId f_user_id, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID);
 };
 } // namespace kenji

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "badge/badge_defs.h"
 #include "data_types.h"
 #include "game/music.h"
 
@@ -114,15 +115,7 @@ public:
    */
   static QString motd();
 
-  /**
-   * @brief Returns the server's authorization type..
-   */
-  static DataTypes::AuthType authType();
-
-  /**
-   * @brief Returns the server's moderator password..
-   */
-  static QString modpass();
+  static QList<theory::UserId> superUserIds();
 
   /**
    * @brief Returns the server's log buffer length..
@@ -279,41 +272,6 @@ public:
   static QString discordWebhookColor();
 
   /**
-   * @brief Returns true if password requirements should be enforced..
-   */
-  static bool passwordRequirements();
-
-  /**
-   * @brief Returns the minimum length passwords must be..
-   */
-  static int passwordMinLength();
-
-  /**
-   * @brief Returns the maximum length passwords can be, or `0` for unlimited length..
-   */
-  static int passwordMaxLength();
-
-  /**
-   * @brief Returns true if passwords must be mixed case..
-   */
-  static bool passwordRequireMixCase();
-
-  /**
-   * @brief Returns true is passwords must contain one or more numbers..
-   */
-  static bool passwordRequireNumbers();
-
-  /**
-   * @brief Returns true if passwords must contain one or more special characters...
-   */
-  static bool passwordRequireSpecialCharacters();
-
-  /**
-   * @brief Returns true if passwords can contain the username..
-   */
-  static bool passwordCanContainUsername();
-
-  /**
    * @brief Returns the logstring for the specified logtype.
    *
    * @param Name of the logstring we want..
@@ -395,13 +353,6 @@ public:
    * @brief Returns a struct with the help information of the command..
    */
   static help commandHelp(const QString &f_command_name);
-
-  /**
-   * @brief Sets the server's authorization type.
-   *
-   * @param f_auth The auth type to set.
-   */
-  static void setAuthType(const DataTypes::AuthType f_auth);
 
   /**
    * @brief Sets the server's Message of the Day.

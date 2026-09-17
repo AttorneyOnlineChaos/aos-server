@@ -52,7 +52,7 @@ void kenji::AOClient::process(const theory::IcMessagePacket &packet)
   l_message.playerId = id;
   server->broadcastToArea(l_message, areaId());
 
-  m_logger.logIC(l_area->name(), m_ipid, name(), QString::number(id), (m_character.toString() + " " + characterName().value_or(QString())), m_last_message);
+  m_logger.logIC(l_area->name(), userId, name(), QString::number(id), (m_character.toString() + " " + characterName().value_or(QString())), m_last_message);
   l_area->updateLastICMessage(l_message);
 
   l_area->startMessageFloodguard(ConfigManager::messageFloodguardMs());

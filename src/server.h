@@ -15,7 +15,6 @@
 #include "config_manager.h"
 #include "connection_pool.h"
 #include "core/pointer_types.h"
-#include "db_manager.h"
 #include "discord.h"
 #include "inventory_registry.h"
 #include "logger/u_logger.h"
@@ -26,6 +25,7 @@
 #include "protocol/server_info.h"
 #include "protocol/server_settings.h"
 #include "server/host_server.h"
+#include "server_database.h"
 #include "server_publisher.h"
 #include "session_registry.h"
 #include "timer.h"
@@ -88,23 +88,7 @@ public:
    */
   QList<AOClient *> getClients();
 
-  /**
-   * @brief Gets a list of pointers to all clients with the given IPID.
-   *
-   * @param ipid The IPID to look for.
-   *
-   * @return A list of clients whose IPID match. List may be empty.
-   */
-  QList<AOClient *> getClientsByIpid(const QString &ipid);
-
-  /**
-   * @brief Gets a list of pointers to all clients with the given HWID.
-   *
-   * @param HWID The HWID to look for.
-   *
-   * @return A list of clients whose HWID match. List may be empty.
-   */
-  QList<AOClient *> getClientsByHwid(const QString &f_hwid);
+  QList<AOClient *> getClientsByUserId(theory::UserId userId);
 
   /**
    * @brief Gets a pointer to a client by user ID.
@@ -114,6 +98,8 @@ public:
    * @return A pointer to the client if found, a nullpointer if not.
    */
   AOClient *getClientByID(theory::PlayerId id);
+
+  void wipeAllTokens();
 
   /**
    * @brief Returns the overall player count in the server.
@@ -232,12 +218,7 @@ public:
    */
   QStringList getBackgrounds();
 
-  /**
-   * @brief Returns a pointer to a database manager.
-   *
-   * @return A pointer to a database manager.
-   */
-  DBManager *getDatabaseManager();
+  ServerDatabase &database();
 
   /**
    * @brief Returns a pointer to the server's Ye Olde Chat Filter
@@ -328,7 +309,7 @@ Q_SIGNALS:
    * @param f_reason The reason for the ban.
    * @param f_banID The ID of the issued ban.
    */
-  void banWebhookRequest(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID);
+  void banWebhookRequest(theory::UserId f_user_id, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID);
 
   void personalInventoriesToggled(bool enabled);
 
@@ -376,6 +357,7 @@ private:
 
   theory::Unique<SessionRegistry> m_session_registry;
 
+  theory::Unique<ServerDatabase> _database;
   theory::Unique<theory::UserDatabase> _users;
   theory::Unique<theory::GuestTokenRegistry> _guests;
   theory::Unique<theory::BadgeServerEngine> _badgeEngine;
@@ -430,11 +412,6 @@ private:
   bool m_can_send_ic_messages = true;
 
   bool m_personal_inventories_enabled = true;
-
-  /**
-   * @brief The database manager on the server, used to store users' bans and authorisation details.
-   */
-  DBManager *db_manager;
 
   /**
    * @see ACLRolesHandler

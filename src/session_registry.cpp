@@ -11,19 +11,19 @@ kenji::SessionRegistry::SessionRegistry(AOClientRegistry &clients, theory::Guest
     , _guests{guests}
 {}
 
-std::optional<kenji::SessionRegistry::Ticket> kenji::SessionRegistry::join(const theory::UserDatabase::Ticket &admission, const std::optional<QString> &sessionToken, const QString &hwid, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &address)
+std::optional<kenji::SessionRegistry::Ticket> kenji::SessionRegistry::join(const theory::UserDatabase::Ticket &admission, const std::optional<QString> &sessionToken, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &address)
 {
   if (sessionToken)
   {
-    const QString tokenKey = theory::computeTokenKey({sessionToken.value(), hwid});
-    if (const auto it = _sessions.constFind(tokenKey); it != _sessions.constEnd() && it.value()->getHwid() == hwid && it.value()->userId == admission.user.id && it.value()->sessionStatus() != AOClient::SessionStatus::Expired)
+    const QString tokenKey = theory::computeTokenKey({sessionToken.value()});
+    if (const auto it = _sessions.constFind(tokenKey); it != _sessions.constEnd() && it.value()->userId == admission.user.id && it.value()->sessionStatus() != AOClient::SessionStatus::Expired)
     {
       Ticket ticket;
       ticket.token = theory::generateToken();
       ticket.client = it.value();
       ticket.recovered = true;
       _sessions.remove(tokenKey);
-      _sessions.insert(theory::computeTokenKey({ticket.token, hwid}), ticket.client);
+      _sessions.insert(theory::computeTokenKey({ticket.token}), ticket.client);
       if (admission.user.id == theory::NoUserId)
       {
         _guestTokens.insert(ticket.client, admission.token);
@@ -44,7 +44,6 @@ std::optional<kenji::SessionRegistry::Ticket> kenji::SessionRegistry::join(const
     return std::nullopt;
   }
 
-  client->m_hwid = hwid;
   if (admission.user.id == theory::NoUserId)
   {
     _guestTokens.insert(client, admission.token);
@@ -61,8 +60,17 @@ std::optional<kenji::SessionRegistry::Ticket> kenji::SessionRegistry::join(const
   Ticket ticket;
   ticket.token = theory::generateToken();
   ticket.client = client;
-  _sessions.insert(theory::computeTokenKey({ticket.token, hwid}), client);
+  _sessions.insert(theory::computeTokenKey({ticket.token}), client);
   return ticket;
+}
+
+void kenji::SessionRegistry::dropAll()
+{
+  const QList<AOClient *> clients = _clients.clients();
+  for (AOClient *client : clients)
+  {
+    client->drop();
+  }
 }
 
 void kenji::SessionRegistry::remove(AOClient *client)

@@ -28,12 +28,6 @@ void kenji::AOClient::process(const theory::OocMessagePacket &packet)
 
   setName(l_name);
 
-  if (m_is_logging_in)
-  {
-    loginAttempt(packet.message);
-    return;
-  }
-
   QString l_message = dezalgo(packet.message);
 
   if (l_message.length() == 0 || l_message.length() > ConfigManager::maxMessageLength())
@@ -64,7 +58,7 @@ void kenji::AOClient::process(const theory::OocMessagePacket &packet)
     int l_cmd_argc = l_cmd_argv->length();
 
     handleCommand(l_command, l_cmd_argc, l_cmd_argv.value());
-    m_logger.logCMD((m_character.toString() + " " + characterName().value_or(QString())), m_ipid, name(), l_command, l_cmd_argv.value(), server->getAreaById(areaId())->name());
+    m_logger.logCMD((m_character.toString() + " " + characterName().value_or(QString())), userId, name(), l_command, l_cmd_argv.value(), server->getAreaById(areaId())->name());
     return;
   }
   else
@@ -75,5 +69,5 @@ void kenji::AOClient::process(const theory::OocMessagePacket &packet)
     server->broadcastToArea(l_broadcast, areaId());
   }
 
-  m_logger.logOOC(server->getAreaById(areaId())->name(), m_ipid, name(), QString::number(id), (m_character.toString() + " " + characterName().value_or(QString())), l_message);
+  m_logger.logOOC(server->getAreaById(areaId())->name(), userId, name(), QString::number(id), (m_character.toString() + " " + characterName().value_or(QString())), l_message);
 }

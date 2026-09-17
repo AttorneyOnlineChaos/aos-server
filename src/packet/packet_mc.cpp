@@ -74,7 +74,7 @@ void kenji::AOClient::process(const theory::PlayMusicPacket &packet)
   l_music_change.effects = packet.effects;
   server->broadcastToArea(l_music_change, areaId());
 
-  m_logger.logMusic((m_character.toString() + " " + characterName().value_or(QString())), name(), m_ipid, l_area->name(), l_final_track.value_or(QString()));
+  m_logger.logMusic((m_character.toString() + " " + characterName().value_or(QString())), name(), userId, l_area->name(), l_final_track.value_or(QString()));
 
   if (packet.noRepeat)
   {

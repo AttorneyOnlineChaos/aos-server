@@ -14,16 +14,6 @@ class DataTypes
 
 public:
   /**
-   * @brief Custom type for authorization types.
-   */
-  enum class AuthType
-  {
-    SIMPLE,
-    ADVANCED
-  };
-  Q_ENUM(AuthType);
-
-  /**
    * @brief Custom type for logging types.
    */
   enum class LogType

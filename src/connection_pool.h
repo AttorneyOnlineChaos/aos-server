@@ -3,8 +3,8 @@
 #include "badge/badge_gateway.h"
 #include "connection.h"
 #include "core/pointer_types.h"
-#include "db_manager.h"
 #include "network/cargo_socket.h"
+#include "server_database.h"
 #include "session_registry.h"
 
 #include <QHostAddress>
@@ -19,22 +19,19 @@ class ConnectionPool : public QObject
   Q_OBJECT
 
 public:
-  ConnectionPool(theory::BadgeGateway &gateway, SessionRegistry &sessions, DBManager &database, QObject *parent = nullptr);
+  ConnectionPool(theory::BadgeGateway &gateway, SessionRegistry &sessions, ServerDatabase &database, QObject *parent = nullptr);
   ~ConnectionPool();
 
   int count() const;
 
-  void create(const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &address, const QString &ipid);
+  void create(const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &address);
 
   void clear();
-
-Q_SIGNALS:
-  void connectionAttempted(const QString &address, const QString &ipid, const QString &hdid);
 
 private:
   theory::BadgeGateway &_gateway;
   SessionRegistry &_sessions;
-  DBManager &_database;
+  ServerDatabase &_database;
   QList<Connection *> _connections;
 };
 } // namespace kenji

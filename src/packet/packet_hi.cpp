@@ -1,6 +1,8 @@
 #include "ao_client.h"
 
+#include "acl_roles_handler.h"
 #include "area_data.h"
+#include "config_manager.h"
 #include "server.h"
 
 void kenji::AOClient::shipSnapshot()
@@ -54,6 +56,18 @@ void kenji::AOClient::beginSession()
   theory::WelcomePacket l_welcome;
   l_welcome.playerId = id;
   shipPacket(l_welcome);
+
+  if (!isGuest())
+  {
+    if (ConfigManager::superUserIds().contains(userId))
+    {
+      applyRole(ACLRolesHandler::SUPER_ID);
+    }
+    else if (const std::optional<QString> l_role = server->database().role(userId))
+    {
+      applyRole(l_role.value());
+    }
+  }
 
   server->getAreaById(areaId())->addClient(theory::NoCharacterId, id);
 }

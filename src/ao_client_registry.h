@@ -35,8 +35,7 @@ public:
   QList<AOClient *> clientsIf(const Condition &condition) const;
   int countIf(const Condition &condition) const;
 
-  QList<AOClient *> clientsByIpid(const QString &ipid) const;
-  QList<AOClient *> clientsByHwid(const QString &hwid) const;
+  QList<AOClient *> clientsByUserId(theory::UserId userId) const;
   QList<AOClient *> clientsInArea(theory::AreaId areaId) const;
   int countByAddress(const QHostAddress &address) const;
 

@@ -29,7 +29,8 @@ public:
     AOClient *client = nullptr;
     bool recovered = false;
   };
-  std::optional<Ticket> join(const theory::UserDatabase::Ticket &admission, const std::optional<QString> &sessionToken, const QString &hwid, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &address);
+  std::optional<Ticket> join(const theory::UserDatabase::Ticket &admission, const std::optional<QString> &sessionToken, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &address);
+  void dropAll();
 
 private:
   AOClientRegistry &_clients;

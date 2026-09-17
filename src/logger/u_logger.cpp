@@ -23,92 +23,63 @@ kenji::ULogger::~ULogger()
   delete writerFull;
 }
 
-void kenji::ULogger::logIC(const QString &f_area_name, const QString &f_ipid, const QString &f_ooc_name, const QString &f_id, const QString &f_char_name, const QString &f_message)
+QString kenji::ULogger::logIdentity(theory::UserId id)
+{
+  return id == theory::NoUserId ? QStringLiteral("guest") : QString::number(id);
+}
+
+void kenji::ULogger::logIC(const QString &f_area_name, theory::UserId f_user_id, const QString &f_ooc_name, const QString &f_id, const QString &f_char_name, const QString &f_message)
 {
   QString l_time = QDateTime::currentDateTime().toString("ddd MMMM d yyyy | hh:mm:ss");
-  QString l_logEntry = QString(m_logtext.value("ic") + "\n").arg(l_time, f_area_name, f_ipid, f_id, f_char_name, f_ooc_name, f_message);
+  QString l_logEntry = QString(m_logtext.value("ic") + "\n").arg(l_time, f_area_name, logIdentity(f_user_id), f_id, f_char_name, f_ooc_name, f_message);
   updateAreaBuffer(f_area_name, l_logEntry);
 }
 
-void kenji::ULogger::logMusic(const QString &f_char_name, const QString &f_ooc_name, const QString &f_ipid, const QString &f_area_name, const QString &f_track)
+void kenji::ULogger::logMusic(const QString &f_char_name, const QString &f_ooc_name, theory::UserId f_user_id, const QString &f_area_name, const QString &f_track)
 {
   QString l_time = QDateTime::currentDateTime().toString("ddd MMMM d yyyy | hh:mm:ss");
-  QString l_logEntry = QString(m_logtext.value("music") + "\n").arg(l_time, f_char_name, f_ooc_name, f_ipid, f_area_name, f_track);
+  QString l_logEntry = QString(m_logtext.value("music") + "\n").arg(l_time, f_char_name, f_ooc_name, logIdentity(f_user_id), f_area_name, f_track);
   updateAreaBuffer(f_area_name, l_logEntry);
 }
 
-void kenji::ULogger::logOOC(const QString &f_area_name, const QString &f_ipid, const QString &f_ooc_name, const QString &f_id, const QString &f_char_name, const QString &f_message)
+void kenji::ULogger::logOOC(const QString &f_area_name, theory::UserId f_user_id, const QString &f_ooc_name, const QString &f_id, const QString &f_char_name, const QString &f_message)
 {
   QString l_time = QDateTime::currentDateTime().toString("ddd MMMM d yyyy | hh:mm:ss");
-  QString l_logEntry = QString(m_logtext.value("ooc") + "\n").arg(l_time, f_area_name, f_ipid, f_id, f_char_name, f_ooc_name, f_message);
+  QString l_logEntry = QString(m_logtext.value("ooc") + "\n").arg(l_time, f_area_name, logIdentity(f_user_id), f_id, f_char_name, f_ooc_name, f_message);
   updateAreaBuffer(f_area_name, l_logEntry);
 }
 
-void kenji::ULogger::logLogin(const QString &f_char_name, const QString &f_ooc_name, const QString &f_moderator_name, const QString &f_ipid, const QString &f_area_name, const bool &f_success)
+void kenji::ULogger::logCMD(const QString &f_char_name, theory::UserId f_user_id, const QString &f_ooc_name, const QString &f_command, const QStringList &f_args, const QString &f_area_name)
 {
   QString l_time = QDateTime::currentDateTime().toString("ddd MMMM d yyyy | hh:mm:ss");
-  QString l_success = f_success ? "SUCCESS][" + f_moderator_name : "FAILED][" + f_moderator_name;
-  QString l_logEntry = QString(m_logtext.value("login") + "\n").arg(l_time, l_success, f_ipid, f_char_name, f_ooc_name);
+  QString l_logEntry = QString(m_logtext.value("cmd") + "\n").arg(l_time, f_area_name, f_char_name, f_ooc_name, f_command, f_args.join(" "), logIdentity(f_user_id));
   updateAreaBuffer(f_area_name, l_logEntry);
 }
 
-void kenji::ULogger::logCMD(const QString &f_char_name, const QString &f_ipid, const QString &f_ooc_name, const QString &f_command, const QStringList &f_args, const QString &f_area_name)
+void kenji::ULogger::logKick(theory::UserId f_moderator, theory::UserId f_target)
 {
   QString l_time = QDateTime::currentDateTime().toString("ddd MMMM d yyyy | hh:mm:ss");
-  QString l_logEntry;
-  // Some commands contain sensitive data, like passwords
-  // These must be filtered out
-  if (f_command == "login")
-  {
-    l_logEntry = QString(m_logtext.value("cmdlogin") + "\n").arg(l_time, f_area_name, f_char_name, f_ooc_name, f_ipid);
-  }
-  else if (f_command == "rootpass")
-  {
-    l_logEntry = QString(m_logtext.value("cmdrootpass") + "\n").arg(l_time, f_area_name, f_char_name, f_ooc_name, f_ipid);
-  }
-  else if (f_command == "adduser" && !f_args.isEmpty())
-  {
-    l_logEntry = QString(m_logtext.value("adduser") + "\n").arg(l_time, f_area_name, f_char_name, f_ooc_name, f_args.at(0), f_ipid);
-  }
-  else
-  {
-    l_logEntry = QString(m_logtext.value("cmd") + "\n").arg(l_time, f_area_name, f_char_name, f_ooc_name, f_command, f_args.join(" "), f_ipid);
-  }
-
-  updateAreaBuffer(f_area_name, l_logEntry);
-}
-
-void kenji::ULogger::logKick(const QString &f_moderator, const QString &f_target_ipid)
-{
-  QString l_time = QDateTime::currentDateTime().toString("ddd MMMM d yyyy | hh:mm:ss");
-  QString l_logEntry = QString(m_logtext.value("kick") + "\n").arg(l_time, f_moderator, f_target_ipid);
+  QString l_logEntry = QString(m_logtext.value("kick") + "\n").arg(l_time, logIdentity(f_moderator), logIdentity(f_target));
   updateAreaBuffer("SERVER", l_logEntry);
 }
 
-void kenji::ULogger::logBan(const QString &f_moderator, const QString &f_target_ipid, const QString &f_duration)
+void kenji::ULogger::logBan(theory::UserId f_moderator, theory::UserId f_target, const QString &f_duration)
 {
   QString l_time = QDateTime::currentDateTime().toString("ddd MMMM d yyyy | hh:mm:ss");
-  QString l_logEntry = QString(m_logtext.value("ban") + "\n").arg(l_time, f_moderator, f_target_ipid, f_duration);
+  QString l_logEntry = QString(m_logtext.value("ban") + "\n").arg(l_time, logIdentity(f_moderator), logIdentity(f_target), f_duration);
   updateAreaBuffer("SERVER", l_logEntry);
 }
 
-void kenji::ULogger::logModcall(const QString &f_area_name, const QString &f_ipid, const QString &f_ooc_name, const QString &f_id, const QString &f_char_name)
+void kenji::ULogger::logModcall(const QString &f_area_name, theory::UserId f_user_id, const QString &f_ooc_name, const QString &f_id, const QString &f_char_name)
 {
   QString l_time = QDateTime::currentDateTime().toString("ddd MMMM d yyyy | hh:mm:ss");
-  QString l_logEvent = QString(m_logtext.value("modcall") + "\n").arg(l_time, f_area_name, f_ipid, f_id, f_char_name, f_ooc_name);
+  QString l_logEvent = QString(m_logtext.value("modcall") + "\n").arg(l_time, f_area_name, logIdentity(f_user_id), f_id, f_char_name, f_ooc_name);
   updateAreaBuffer(f_area_name, l_logEvent);
 
   if (ConfigManager::loggingType() == DataTypes::LogType::MODCALL)
   {
     writerModcall->flush(f_area_name, buffer(f_area_name));
   }
-}
-
-void kenji::ULogger::logConnectionAttempt(const QString &f_ip_address, const QString &f_ipid, const QString &f_hwid)
-{
-  QString l_time = QDateTime::currentDateTime().toString("ddd MMMM d yyyy | hh:mm:ss");
-  QString l_logEntry = QString(m_logtext.value("connect") + "\n").arg(l_time, f_ip_address, f_ipid, f_hwid);
-  updateAreaBuffer("SERVER", l_logEntry);
 }
 
 void kenji::ULogger::loadLogtext()

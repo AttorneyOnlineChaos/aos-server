@@ -108,13 +108,6 @@ bool kenji::ConfigManager::verifyServerConfig()
     }
   }
 
-  QString l_auth = self->m_settings.value("auth", "simple").toString().toLower();
-  if (!(l_auth == "simple" || l_auth == "advanced"))
-  {
-    zCritical(log::config) << "auth is not a valid auth type!";
-    return false;
-  }
-
   int l_soft_limit = self->m_settings.value("packet_rate_limit_soft", 10).toInt(&ok);
   if (!ok)
   {
@@ -145,6 +138,22 @@ bool kenji::ConfigManager::verifyServerConfig()
   }
 
   self->m_settings.endGroup();
+
+  for (const QString &entry : self->m_settings.value("Moderation/super_user_ids").toStringList())
+  {
+    const QString l_entry = entry.trimmed();
+    if (l_entry.isEmpty())
+    {
+      continue;
+    }
+
+    const theory::UserId l_id = l_entry.toInt(&ok);
+    if (!ok || l_id < 1)
+    {
+      zCritical(log::config) << QStringLiteral("super_user_ids: '%1' is not a user id!").arg(l_entry);
+      return false;
+    }
+  }
 
   if (badgeIds().join(QString()).isEmpty())
   {
@@ -521,15 +530,29 @@ QString kenji::ConfigManager::motd()
   return self->m_settings.value("Options/motd", "MOTD not set").toString();
 }
 
-kenji::DataTypes::AuthType kenji::ConfigManager::authType()
+QList<theory::UserId> kenji::ConfigManager::superUserIds()
 {
-  QString l_auth = self->m_settings.value("Options/auth", "simple").toString().toUpper();
-  return toDataType<DataTypes::AuthType>(l_auth);
-}
+  QList<theory::UserId> ids;
+  for (const QString &entry : self->m_settings.value("Moderation/super_user_ids").toStringList())
+  {
+    const QString l_entry = entry.trimmed();
+    if (l_entry.isEmpty())
+    {
+      continue;
+    }
 
-QString kenji::ConfigManager::modpass()
-{
-  return self->m_settings.value("Options/modpass", "changeme").toString();
+    bool ok;
+    const theory::UserId l_id = l_entry.toInt(&ok);
+    if (!ok || l_id < 1)
+    {
+      zWarning(log::config) << QStringLiteral("super_user_ids: '%1' is not a user id, skipped").arg(l_entry);
+      continue;
+    }
+
+    ids.append(l_id);
+  }
+
+  return ids;
 }
 
 int kenji::ConfigManager::logBuffer()
@@ -1008,57 +1031,6 @@ QString kenji::ConfigManager::discordWebhookColor()
   }
 }
 
-bool kenji::ConfigManager::passwordRequirements()
-{
-  return self->m_settings.value("Password/password_requirements", true).toBool();
-}
-
-int kenji::ConfigManager::passwordMinLength()
-{
-  bool ok;
-  int l_min = self->m_settings.value("Password/pass_min_length", 8).toInt(&ok);
-  if (!ok)
-  {
-    zWarning(log::config) << "pass_min_length is not an int!";
-    l_min = 8;
-  }
-
-  return l_min;
-}
-
-int kenji::ConfigManager::passwordMaxLength()
-{
-  bool ok;
-  int l_max = self->m_settings.value("Password/pass_max_length", 0).toInt(&ok);
-  if (!ok)
-  {
-    zWarning(log::config) << "pass_max_length is not an int!";
-    l_max = 0;
-  }
-
-  return l_max;
-}
-
-bool kenji::ConfigManager::passwordRequireMixCase()
-{
-  return self->m_settings.value("Password/pass_required_mix_case", true).toBool();
-}
-
-bool kenji::ConfigManager::passwordRequireNumbers()
-{
-  return self->m_settings.value("Password/pass_required_numbers", true).toBool();
-}
-
-bool kenji::ConfigManager::passwordRequireSpecialCharacters()
-{
-  return self->m_settings.value("Password/pass_required_special", true).toBool();
-}
-
-bool kenji::ConfigManager::passwordCanContainUsername()
-{
-  return self->m_settings.value("Password/pass_can_contain_username", false).toBool();
-}
-
 QString kenji::ConfigManager::LogText(const QString &f_logtype)
 {
   return self->m_logtext.value("LogConfiguration/" + f_logtype, "").toString();
@@ -1088,11 +1060,6 @@ int kenji::ConfigManager::syncInterval()
   }
 
   return qMax(1, l_interval);
-}
-
-void kenji::ConfigManager::setAuthType(const DataTypes::AuthType f_auth)
-{
-  self->m_settings.setValue("Options/auth", fromDataType<DataTypes::AuthType>(f_auth).toLower());
 }
 
 QStringList kenji::ConfigManager::diceFaces(const QString &f_name)

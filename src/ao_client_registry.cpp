@@ -50,14 +50,9 @@ int kenji::AOClientRegistry::countIf(const Condition &condition) const
   return clientsIf(condition).length();
 }
 
-QList<kenji::AOClient *> kenji::AOClientRegistry::clientsByIpid(const QString &ipid) const
+QList<kenji::AOClient *> kenji::AOClientRegistry::clientsByUserId(theory::UserId userId) const
 {
-  return clientsIf([&ipid](const AOClient *client) { return client->getIpid() == ipid; });
-}
-
-QList<kenji::AOClient *> kenji::AOClientRegistry::clientsByHwid(const QString &hwid) const
-{
-  return clientsIf([&hwid](const AOClient *client) { return client->getHwid() == hwid; });
+  return clientsIf([userId](const AOClient *client) { return client->userId == userId; });
 }
 
 QList<kenji::AOClient *> kenji::AOClientRegistry::clientsInArea(theory::AreaId areaId) const

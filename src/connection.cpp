@@ -1,19 +1,18 @@
 #include "connection.h"
 
 #include "config_manager.h"
-#include "db_manager.h"
 #include "protocol/protocol_info.h"
+#include "server_database.h"
 
 #include <QUuid>
 
-kenji::Connection::Connection(theory::BadgeGateway &gateway, SessionRegistry &sessions, DBManager &database, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &address, const QString &ipid, QObject *parent)
+kenji::Connection::Connection(theory::BadgeGateway &gateway, SessionRegistry &sessions, ServerDatabase &database, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &address, QObject *parent)
     : QObject{parent}
     , _gateway{gateway}
     , _sessions{sessions}
     , _database{database}
     , _socket{socket}
     , _address{address}
-    , _ipid{ipid}
 {
   _router.registerRoute<theory::HelloPacket>(&Connection::process, this);
 
@@ -96,15 +95,6 @@ void kenji::Connection::process(const theory::HelloPacket &packet)
     return;
   }
 
-  _hdid = packet.hdid;
-  Q_EMIT connectionAttempted(_address.toString(), _ipid, _hdid);
-  auto ban = _database.isHDIDBanned(_hdid);
-  if (ban.first)
-  {
-    drop(theory::ErrorPacket::Banned, "Reason: " + ban.second.reason + "\nBan ID: " + QString::number(ban.second.id) + "\nUntil: " + ban.second.until());
-    return;
-  }
-
   _router.unregisterAllRoutes();
   _router.registerRoute<theory::SessionClaimPacket>(&Connection::process, this);
 }
@@ -151,8 +141,25 @@ void kenji::Connection::shipBadgeChallenge(const QString &badgeId, const QJsonOb
 
 void kenji::Connection::admitPlayer(const theory::UserDatabase::Ticket &ticket)
 {
+  if (ticket.user.id != theory::NoUserId)
+  {
+    const std::optional<QList<theory::BanRecord>> bans = _database.activeBans(ticket.user.id);
+    if (!bans)
+    {
+      drop(theory::ErrorPacket::ServerFull, "Ban status could not be verified. Please try again shortly.");
+      return;
+    }
+
+    if (!bans->isEmpty())
+    {
+      const theory::BanRecord &ban = bans->first();
+      drop(theory::ErrorPacket::Banned, "Reason: " + ban.reason + "\nBan ID: " + QString::number(ban.id) + "\nUntil: " + ban.until());
+      return;
+    }
+  }
+
   _userToken = ticket.token;
-  const auto session = _sessions.join(ticket, _sessionToken, _hdid, _socket, _address);
+  const auto session = _sessions.join(ticket, _sessionToken, _socket, _address);
   if (!session)
   {
     drop(theory::ErrorPacket::ServerFull);
@@ -195,7 +202,6 @@ void kenji::Connection::finishHandshake(const SessionRegistry::Ticket &ticket)
   }
 
   client->m_remote_ip = _address;
-  client->m_ipid = _ipid;
 
   theory::SessionGrantPacket grant;
   grant.userToken = _userToken;

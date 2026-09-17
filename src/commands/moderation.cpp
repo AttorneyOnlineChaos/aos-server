@@ -3,141 +3,147 @@
 #include "area_data.h"
 #include "command_extension.h"
 #include "config_manager.h"
-#include "db_manager.h"
+#include "core/logging.h"
+#include "kenji_defs.h"
 #include "server.h"
+#include "server_database.h"
 
 // This file is for commands under the moderation category in aoclient.h
 // Be sure to register the command in the header before adding it here!
 
 void kenji::AOClient::cmdBan(int argc, QStringList argv)
 {
-  QString l_args_str = argv[2];
-  if (argc > 3)
+  bool l_ok;
+  const theory::PlayerId l_target_id = argv[0].toInt(&l_ok);
+  if (!l_ok)
   {
-    for (int i = 3; i < argc; i++)
-    {
-      l_args_str += " " + argv[i];
-    }
+    sendServerMessage("Invalid player ID.");
+    return;
   }
 
-  BanInfo l_ban;
+  AOClient *l_target = server->getClientByID(l_target_id);
+  if (l_target == nullptr)
+  {
+    sendServerMessage("No client with that ID found.");
+    return;
+  }
 
-  BanDuration l_duration_seconds = 0;
+  if (l_target->isGuest())
+  {
+    sendServerMessage("Guests can't be banned, only kicked.");
+    return;
+  }
+
+  theory::BanDuration l_duration_seconds = theory::NoBanDuration;
   if (argv[1] == "perma")
   {
-    l_duration_seconds = PermanentBanDuration;
+    l_duration_seconds = theory::PermanentBanDuration;
   }
   else
   {
     l_duration_seconds = parseTime(argv[1]);
   }
 
-  if (l_duration_seconds == -1)
+  if (l_duration_seconds == theory::NoBanDuration)
   {
     sendServerMessage("Invalid time format. Format example: 1h30m");
     return;
   }
 
-  l_ban.duration = l_duration_seconds;
-  l_ban.ipid = argv[0];
-  l_ban.reason = l_args_str;
-  l_ban.time = QDateTime::currentDateTime().toSecsSinceEpoch();
-  bool l_ban_logged = false;
-  int l_kick_counter = 0;
-
-  switch (ConfigManager::authType())
+  QString l_reason = argv[2];
+  for (int i = 3; i < argc; i++)
   {
-  case DataTypes::AuthType::SIMPLE:
-    l_ban.moderator = "moderator";
-    break;
-  case DataTypes::AuthType::ADVANCED:
-    l_ban.moderator = m_moderator_name;
-    break;
+    l_reason += " " + argv[i];
   }
 
-  const QList<AOClient *> l_targets = server->getClientsByIpid(l_ban.ipid);
+  const theory::UserId l_user_id = l_target->userId;
+
+  theory::BanRecord l_ban;
+  l_ban.subjectId = l_user_id;
+  l_ban.issuerId = userId;
+  l_ban.duration = l_duration_seconds;
+  l_ban.reason = l_reason;
+  l_ban.issuedOn = QDateTime::currentSecsSinceEpoch();
+
+  const std::optional<theory::BanId> l_ban_id = server->database().addBan(l_ban);
+  if (!l_ban_id)
+  {
+    sendServerMessage("The ban could not be recorded.");
+    return;
+  }
+
+  const QString l_ban_duration = l_ban.until();
+
+  const QList<AOClient *> l_targets = server->getClientsByUserId(l_user_id);
+  theory::ErrorPacket l_banned;
+  l_banned.code = theory::ErrorPacket::Banned;
+  l_banned.what = l_reason + "\nID: " + QString::number(l_ban_id.value()) + "\nUntil: " + l_ban_duration;
   for (AOClient *l_client : l_targets)
   {
-    if (!l_ban_logged)
-    {
-      l_ban.ip = l_client->m_remote_ip;
-      l_ban.hdid = l_client->m_hwid;
-      server->getDatabaseManager()->addBan(l_ban);
-      sendServerMessage("Banned user with ipid " + l_ban.ipid + " for reason: " + l_ban.reason);
-      l_ban_logged = true;
-    }
-
-    QString l_ban_duration = l_ban.until();
-    int l_ban_id = server->getDatabaseManager()->getBanID(l_ban.ip);
-    theory::ErrorPacket l_banned;
-    l_banned.code = theory::ErrorPacket::Banned;
-    l_banned.what = l_ban.reason + "\nID: " + QString::number(l_ban_id) + "\nUntil: " + l_ban_duration;
     l_client->shipPacket(l_banned);
     l_client->drop();
-    l_kick_counter++;
-
-    m_logger.logBan(l_ban.moderator, l_ban.ipid, l_ban_duration);
-    if (ConfigManager::discordBanWebhookEnabled())
-    {
-      Q_EMIT server->banWebhookRequest(l_ban.ipid, l_ban.moderator, l_ban_duration, l_ban.reason, l_ban_id);
-    }
   }
 
-  if (l_kick_counter > 1)
+  m_logger.logBan(userId, l_user_id, l_ban_duration);
+  sendServerMessage("Banned player " + QString::number(l_target_id) + " for reason: " + l_reason);
+  if (l_targets.size() > 1)
   {
-    sendServerMessage("Kicked " + QString::number(l_kick_counter) + " clients with matching ipids.");
+    sendServerMessage("Kicked " + QString::number(l_targets.size()) + " clients sharing that user.");
   }
 
-  // We're banning someone not connected.
-  if (!l_ban_logged)
+  if (ConfigManager::discordBanWebhookEnabled())
   {
-    server->getDatabaseManager()->addBan(l_ban);
-    sendServerMessage("Banned " + l_ban.ipid + " for reason: " + l_ban.reason);
+    Q_EMIT server->banWebhookRequest(l_user_id, name(), l_ban_duration, l_reason, l_ban_id.value());
   }
 }
 
 void kenji::AOClient::cmdKick(int argc, QStringList argv)
 {
-  QString l_target_ipid = argv[0];
+  Q_UNUSED(argc);
+
+  bool l_ok;
+  const theory::PlayerId l_target_id = argv[0].toInt(&l_ok);
+  if (!l_ok)
+  {
+    sendServerMessage("Invalid player ID.");
+    return;
+  }
+
+  AOClient *l_target = server->getClientByID(l_target_id);
+  if (l_target == nullptr)
+  {
+    sendServerMessage("No client with that ID found.");
+    return;
+  }
+
   QString l_reason = argv[1];
-  int l_kick_counter = 0;
-
-  if (argc > 2)
+  for (int i = 2; i < argv.length(); i++)
   {
-    for (int i = 2; i < argv.length(); i++)
-    {
-      l_reason += " " + argv[i];
-    }
+    l_reason += " " + argv[i];
   }
 
-  const QList<AOClient *> l_targets = server->getClientsByIpid(l_target_ipid);
-  for (AOClient *l_client : l_targets)
+  const theory::UserId l_user_id = l_target->userId;
+  QList<AOClient *> l_targets;
+  if (l_target->isGuest())
   {
-    theory::ErrorPacket l_kicked;
-    l_kicked.code = theory::ErrorPacket::Banned;
-    l_kicked.what = l_reason;
-    l_client->shipPacket(l_kicked);
-    l_client->drop();
-    l_kick_counter++;
-  }
-
-  if (l_kick_counter > 0)
-  {
-    if (ConfigManager::authType() == DataTypes::AuthType::ADVANCED)
-    {
-      m_logger.logKick(m_moderator_name, l_target_ipid);
-    }
-    else
-    {
-      m_logger.logKick("Moderator", l_target_ipid);
-    }
-
-    sendServerMessage("Kicked " + QString::number(l_kick_counter) + " client(s) with ipid " + l_target_ipid + " for reason: " + l_reason);
+    l_targets = {l_target};
   }
   else
   {
-    sendServerMessage("User with ipid not found!");
+    l_targets = server->getClientsByUserId(l_user_id);
   }
+
+  theory::ErrorPacket l_kicked;
+  l_kicked.code = theory::ErrorPacket::Banned;
+  l_kicked.what = l_reason;
+  for (AOClient *l_client : l_targets)
+  {
+    l_client->shipPacket(l_kicked);
+    l_client->drop();
+  }
+
+  m_logger.logKick(userId, l_user_id);
+  sendServerMessage("Kicked " + QString::number(l_targets.size()) + " client(s) for reason: " + l_reason);
 }
 
 void kenji::AOClient::cmdMods(int argc, QStringList argv)
@@ -153,12 +159,7 @@ void kenji::AOClient::cmdMods(int argc, QStringList argv)
     if (l_client->m_authenticated)
     {
       l_entries << "---";
-      if (ConfigManager::authType() != DataTypes::AuthType::SIMPLE)
-      {
-        l_entries << "Moderator: " + l_client->m_moderator_name;
-        l_entries << "Role:" << l_client->m_acl_role_id;
-      }
-
+      l_entries << "Role:" << l_client->m_acl_role_id;
       l_entries << "OOC name: " + l_client->name();
       l_entries << "ID: " + QString::number(l_client->id);
       l_entries << "Area: " + QString::number(l_client->areaId());
@@ -327,18 +328,53 @@ void kenji::AOClient::cmdToggleInventory(int argc, QStringList argv)
   }
 }
 
+QString kenji::AOClient::formatBan(const theory::BanRecord &ban)
+{
+  auto l_name_of = [this](theory::UserId l_user_id) -> QString {
+    if (const std::optional<QString> l_name = server->database().lastName(l_user_id))
+    {
+      return l_name.value();
+    }
+
+    return "(no name recorded)";
+  };
+
+  QStringList l_report;
+  l_report << "Ban ID: " + QString::number(ban.id);
+  l_report << "Reason for ban: " + ban.reason;
+  l_report << "Date of ban: " + QDateTime::fromSecsSinceEpoch(ban.issuedOn).toString("MM/dd/yyyy, hh:mm");
+  l_report << "Ban lasts until: " + ban.until();
+  l_report << "Issued by: " + l_name_of(ban.issuerId);
+  if (ban.isRevoked())
+  {
+    l_report << "Revoked by: " + l_name_of(ban.revokerId);
+  }
+  else
+  {
+    l_report << "Revoked: no";
+  }
+
+  return l_report.join("\n");
+}
+
 void kenji::AOClient::cmdBans(int argc, QStringList argv)
 {
   Q_UNUSED(argc);
   Q_UNUSED(argv);
 
+  const std::optional<QList<theory::BanRecord>> l_bans_list = server->database().recentBans(5);
+  if (!l_bans_list)
+  {
+    sendServerMessage("The ban list could not be read.");
+    return;
+  }
+
   QStringList l_recent_bans;
   l_recent_bans << "Last 5 bans:";
   l_recent_bans << "-----";
-  const QList<BanInfo> l_bans_list = server->getDatabaseManager()->getRecentBans();
-  for (const BanInfo &l_ban : l_bans_list)
+  for (const theory::BanRecord &l_ban : l_bans_list.value())
   {
-    l_recent_bans << l_ban.toString();
+    l_recent_bans << formatBan(l_ban);
     l_recent_bans << "-----";
   }
 
@@ -350,20 +386,34 @@ void kenji::AOClient::cmdUnBan(int argc, QStringList argv)
   Q_UNUSED(argc);
 
   bool ok;
-  int l_target_ban = argv[0].toInt(&ok);
+  const theory::BanId l_target_ban = argv[0].toInt(&ok);
   if (!ok)
   {
     sendServerMessage("Invalid ban ID.");
     return;
   }
-  else if (server->getDatabaseManager()->invalidateBan(l_target_ban))
+
+  const std::optional<theory::BanRecord> l_ban = server->database().ban(l_target_ban);
+  if (!l_ban)
   {
-    sendServerMessage("Successfully invalidated ban " + argv[0] + ".");
+    sendServerMessage("No ban with that ID.");
+    return;
   }
-  else
+
+  if (l_ban->isRevoked())
   {
-    sendServerMessage("Couldn't invalidate ban " + argv[0] + ", are you sure it exists?");
+    sendServerMessage("Ban " + argv[0] + " is already revoked.");
+    return;
   }
+
+  if (const std::optional<theory::IOError> l_error = server->database().revokeBan(l_target_ban, userId))
+  {
+    zWarning(log::commands) << QStringLiteral("/unban %1: %2").arg(argv[0], l_error->toString());
+    sendServerMessage("Ban " + argv[0] + " could not be revoked.");
+    return;
+  }
+
+  sendServerMessage("Successfully revoked ban " + argv[0] + ".");
 }
 
 void kenji::AOClient::cmdMute(int argc, QStringList argv)
@@ -584,39 +634,24 @@ void kenji::AOClient::cmdAllowBlankposting(int argc, QStringList argv)
 
 void kenji::AOClient::cmdBanInfo(int argc, QStringList argv)
 {
-  QStringList l_ban_info;
-  l_ban_info << ("Ban Info for " + argv[0]);
-  l_ban_info << "-----";
-  QString l_lookup_type;
+  Q_UNUSED(argc);
 
-  if (argc == 1)
+  bool l_ok;
+  const theory::BanId l_ban_id = argv[0].toInt(&l_ok);
+  if (!l_ok)
   {
-    l_lookup_type = "banid";
-  }
-  else if (argc == 2)
-  {
-    l_lookup_type = argv[1];
-    if (!((l_lookup_type == "banid") || (l_lookup_type == "ipid") || (l_lookup_type == "hdid")))
-    {
-      sendServerMessage("Invalid ID type.");
-      return;
-    }
-  }
-  else
-  {
-    sendServerMessage("Invalid command.");
+    sendServerMessage("Invalid ban ID.");
     return;
   }
 
-  QString l_id = argv[0];
-  const QList<BanInfo> l_bans = server->getDatabaseManager()->getBanInfo(l_lookup_type, l_id);
-  for (const BanInfo &l_ban : l_bans)
+  const std::optional<theory::BanRecord> l_ban = server->database().ban(l_ban_id);
+  if (!l_ban)
   {
-    l_ban_info << l_ban.toString();
-    l_ban_info << "-----";
+    sendServerMessage("No ban with that ID.");
+    return;
   }
 
-  sendServerMessage(l_ban_info.join("\n"));
+  sendServerMessage("Ban Info for " + argv[0] + "\n-----\n" + formatBan(l_ban.value()));
 }
 
 void kenji::AOClient::cmdReload(int argc, QStringList argv)
@@ -704,33 +739,39 @@ void kenji::AOClient::cmdKickUid(int argc, QStringList argv)
 void kenji::AOClient::cmdUpdateBan(int argc, QStringList argv)
 {
   bool conv_ok = false;
-  int l_ban_id = argv[0].toInt(&conv_ok);
+  const theory::BanId l_ban_id = argv[0].toInt(&conv_ok);
   if (!conv_ok)
   {
     sendServerMessage("Invalid ban ID.");
     return;
   }
 
-  QVariant l_updated_info;
+  if (!server->database().ban(l_ban_id))
+  {
+    sendServerMessage("No ban with that ID.");
+    return;
+  }
+
+  std::optional<theory::IOError> l_error;
   if (argv[1] == "duration")
   {
-    BanDuration l_duration_seconds = 0;
+    theory::BanDuration l_duration_seconds = theory::NoBanDuration;
     if (argv[2] == "perma")
     {
-      l_duration_seconds = PermanentBanDuration;
+      l_duration_seconds = theory::PermanentBanDuration;
     }
     else
     {
       l_duration_seconds = parseTime(argv[2]);
     }
 
-    if (l_duration_seconds == -1)
+    if (l_duration_seconds == theory::NoBanDuration)
     {
       sendServerMessage("Invalid time format. Format example: 1h30m");
       return;
     }
 
-    l_updated_info = QVariant(l_duration_seconds);
+    l_error = server->database().setBanDuration(l_ban_id, l_duration_seconds);
   }
   else if (argv[1] == "reason")
   {
@@ -743,7 +784,7 @@ void kenji::AOClient::cmdUpdateBan(int argc, QStringList argv)
       }
     }
 
-    l_updated_info = QVariant(l_args_str);
+    l_error = server->database().setBanReason(l_ban_id, l_args_str);
   }
   else
   {
@@ -751,9 +792,10 @@ void kenji::AOClient::cmdUpdateBan(int argc, QStringList argv)
     return;
   }
 
-  if (!server->getDatabaseManager()->updateBan(l_ban_id, argv[1], l_updated_info))
+  if (l_error)
   {
-    sendServerMessage("There was an error updating the ban. Please confirm the ban ID is valid.");
+    zWarning(log::commands) << QStringLiteral("/updateban %1: %2").arg(argv[0], l_error->toString());
+    sendServerMessage("Ban " + argv[0] + " could not be updated.");
     return;
   }
 
@@ -778,23 +820,16 @@ void kenji::AOClient::cmdKickOther(int argc, QStringList argv)
   Q_UNUSED(argc);
   Q_UNUSED(argv);
 
-  int l_kick_counter = 0;
-
-  QList<AOClient *> l_target_clients;
-  const QList<AOClient *> l_targets_hwid = server->getClientsByHwid(m_hwid);
-  l_target_clients = server->getClientsByIpid(m_ipid);
-
-  // Merge both lookups into one single list.)
-  for (AOClient *l_target_candidate : qAsConst(l_targets_hwid))
+  if (isGuest())
   {
-    if (!l_target_clients.contains(l_target_candidate))
-    {
-      l_target_clients.append(l_target_candidate);
-    }
+    sendServerMessage("Guests have no other instances to kick.");
+    return;
   }
 
-  // The list is unique, we can only have on instance of the current client.
+  QList<AOClient *> l_target_clients = server->getClientsByUserId(userId);
   l_target_clients.removeOne(this);
+
+  int l_kick_counter = 0;
   for (AOClient *l_target_client : qAsConst(l_target_clients))
   {
     l_target_client->drop();
@@ -810,4 +845,13 @@ void kenji::AOClient::cmdDc(int argc, QStringList argv)
   Q_UNUSED(argv);
 
   m_socket->close();
+}
+
+void kenji::AOClient::cmdWipeTokens(int argc, QStringList argv)
+{
+  Q_UNUSED(argc);
+  Q_UNUSED(argv);
+
+  zWarning(log::commands) << "All users have been disconnected and their tokens have by wiped by" << userId;
+  server->wipeAllTokens();
 }

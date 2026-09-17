@@ -9,24 +9,17 @@
 #include "server.h"
 
 const QMap<QString, kenji::AOClient::CommandInfo> kenji::AOClient::COMMANDS{
-    {"login", {{ACLRole::NONE}, 0, &AOClient::cmdLogin}},
     {"getarea", {{ACLRole::NONE}, 0, &AOClient::cmdGetArea}},
     {"getareas", {{ACLRole::NONE}, 0, &AOClient::cmdGetAreas}},
     {"ban", {{ACLRole::BAN}, 3, &AOClient::cmdBan}},
     {"kick", {{ACLRole::KICK}, 2, &AOClient::cmdKick}},
-    {"changeauth", {{ACLRole::SUPER}, 0, &AOClient::cmdChangeAuth}},
-    {"rootpass", {{ACLRole::SUPER}, 1, &AOClient::cmdSetRootPass}},
     {"background", {{ACLRole::NONE}, 1, &AOClient::cmdSetBackground}},
     {"side", {{ACLRole::CM}, 0, &AOClient::cmdSetSide}},
     {"lock_background", {{ACLRole::CM, ACLRole::BGLOCK}, 0, &AOClient::cmdBgLock}},
     {"unlock_background", {{ACLRole::CM, ACLRole::BGLOCK}, 0, &AOClient::cmdBgUnlock}},
-    {"adduser", {{ACLRole::MODIFY_USERS}, 2, &AOClient::cmdAddUser}},
-    {"removeuser", {{ACLRole::MODIFY_USERS}, 1, &AOClient::cmdRemoveUser}},
-    {"listusers", {{ACLRole::MODIFY_USERS}, 0, &AOClient::cmdListUsers}},
     {"setperms", {{ACLRole::MODIFY_USERS}, 2, &AOClient::cmdSetPerms}},
     {"removeperms", {{ACLRole::MODIFY_USERS}, 1, &AOClient::cmdRemovePerms}},
     {"listperms", {{ACLRole::NONE}, 0, &AOClient::cmdListPerms}},
-    {"logout", {{ACLRole::NONE}, 0, &AOClient::cmdLogout}},
     {"pos", {{ACLRole::NONE}, 1, &AOClient::cmdPos}},
     {"g", {{ACLRole::NONE}, 1, &AOClient::cmdG}},
     {"need", {{ACLRole::NONE}, 1, &AOClient::cmdNeed}},
@@ -114,7 +107,6 @@ const QMap<QString, kenji::AOClient::CommandInfo> kenji::AOClient::COMMANDS{
     {"kick_uid", {{ACLRole::KICK}, 2, &AOClient::cmdKickUid}},
     {"firstperson", {{ACLRole::NONE}, 0, &AOClient::cmdFirstPerson}},
     {"update_ban", {{ACLRole::BAN}, 3, &AOClient::cmdUpdateBan}},
-    {"changepass", {{ACLRole::NONE}, 1, &AOClient::cmdChangePassword}},
     {"ignore_bglist", {{ACLRole::IGNORE_BGLIST}, 0, &AOClient::cmdIgnoreBgList}},
     {"notice", {{ACLRole::SEND_NOTICE}, 1, &AOClient::cmdNotice}},
     {"noticeg", {{ACLRole::SEND_NOTICE}, 1, &AOClient::cmdNoticeGlobal}},
@@ -133,6 +125,7 @@ const QMap<QString, kenji::AOClient::CommandInfo> kenji::AOClient::COMMANDS{
     {"toggle_shouts", {{ACLRole::CM}, 0, &AOClient::cmdToggleShouts}},
     {"kick_other", {{ACLRole::NONE}, 0, &AOClient::cmdKickOther}},
     {"dc", {{ACLRole::NONE}, 0, &AOClient::cmdDc}},
+    {"wipetokens", {{ACLRole::SUPER}, 0, &AOClient::cmdWipeTokens}},
     {"jukebox_skip", {{ACLRole::CM}, 0, &AOClient::cmdJukeboxSkip}},
     {"play_ambience", {{ACLRole::NONE}, 1, &AOClient::cmdPlayAmbience}},
     {"medieval", {{ACLRole::MUTE}, 1, &AOClient::cmdMedieval}},
@@ -537,28 +530,38 @@ bool kenji::AOClient::checkPermission(ACLRole::Permission f_permission) const
     return false;
   }
 
-  if (ConfigManager::authType() == DataTypes::AuthType::SIMPLE)
-  {
-    return true;
-  }
-
   const ACLRole l_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
   return l_role.checkPermission(f_permission);
 }
 
-QString kenji::AOClient::getIpid() const
+bool kenji::AOClient::isGuest() const
 {
-  return m_ipid;
-}
-
-QString kenji::AOClient::getHwid() const
-{
-  return m_hwid;
+  return userId == theory::NoUserId;
 }
 
 bool kenji::AOClient::isAuthenticated() const
 {
   return m_authenticated;
+}
+
+void kenji::AOClient::applyRole(const QString &roleId)
+{
+  m_acl_role_id = roleId;
+  m_authenticated = true;
+
+  theory::AuthStatePacket l_auth;
+  l_auth.state = theory::AuthStatePacket::LoggedIn;
+  shipPacket(l_auth);
+}
+
+void kenji::AOClient::clearRole()
+{
+  m_acl_role_id.clear();
+  m_authenticated = false;
+
+  theory::AuthStatePacket l_auth;
+  l_auth.state = theory::AuthStatePacket::LoggedOut;
+  shipPacket(l_auth);
 }
 
 QString kenji::AOClient::name() const
@@ -571,6 +574,11 @@ void kenji::AOClient::setName(const QString &f_name)
   if (f_name != m_ooc_name)
   {
     m_ooc_name = f_name;
+    if (!isGuest())
+    {
+      server->database().recordName(userId, m_ooc_name);
+    }
+
     Q_EMIT nameChanged(m_ooc_name);
   }
 }

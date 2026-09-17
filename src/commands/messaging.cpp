@@ -72,7 +72,7 @@ void kenji::AOClient::cmdG(int argc, QStringList argv)
   QString l_sender_message = argv.join(" ");
   // Better readability thanks to AwesomeAim.
   theory::OocMessagePacket l_mod_packet;
-  l_mod_packet.name = "[G][" + m_ipid + "][" + l_sender_area + "]" + l_sender_name;
+  l_mod_packet.name = "[G][" + QString::number(id) + "][" + l_sender_area + "]" + l_sender_name;
   l_mod_packet.message = l_sender_message;
   theory::OocMessagePacket l_user_packet;
   l_user_packet.name = "[G][" + l_sender_area + "]" + l_sender_name;

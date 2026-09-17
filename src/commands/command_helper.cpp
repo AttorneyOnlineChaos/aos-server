@@ -64,7 +64,7 @@ QStringList kenji::AOClient::buildAreaList(theory::AreaId area_idx)
 
       if (m_authenticated)
       {
-        char_entry += " (" + l_client->getIpid() + "): " + l_client->name();
+        char_entry += " (" + QString::number(l_client->id) + "): " + l_client->name();
       }
 
       entries.append(char_entry);
@@ -151,7 +151,7 @@ QString kenji::AOClient::getAreaTimer(theory::AreaId area_idx, int timer_idx)
   return l_timer_name + " is at " + l_current_time.toString("hh:mm:ss.zzz");
 }
 
-long long kenji::AOClient::parseTime(const QString &input)
+theory::BanDuration kenji::AOClient::parseTime(const QString &input)
 {
   QRegularExpression l_regex("(?:(?:(?<year>.*?)y)*(?:(?<week>.*?)w)*(?:(?<day>.*?)d)*(?:(?<hr>.*?)h)*(?:(?<min>.*?)m)*(?:(?<sec>.*?)s)*)");
   QRegularExpressionMatch match = l_regex.match(input);
@@ -171,7 +171,7 @@ long long kenji::AOClient::parseTime(const QString &input)
 
   if (!l_is_well_formed)
   {
-    return -1;
+    return theory::NoBanDuration;
   }
 
   year = str_year.toInt();
@@ -181,20 +181,20 @@ long long kenji::AOClient::parseTime(const QString &input)
   minute = str_minute.toInt();
   second = str_second.toInt();
 
-  long long l_total = 0;
-  l_total += 31622400 * year;
-  l_total += 604800 * week;
-  l_total += 86400 * day;
-  l_total += 3600 * hour;
-  l_total += 60 * minute;
+  theory::BanDuration l_total = 0;
+  l_total += theory::BanDuration{31622400} * year;
+  l_total += theory::BanDuration{604800} * week;
+  l_total += theory::BanDuration{86400} * day;
+  l_total += theory::BanDuration{3600} * hour;
+  l_total += theory::BanDuration{60} * minute;
   l_total += second;
 
   if (l_total < 0)
   {
-    return -1;
+    return theory::NoBanDuration;
   }
 
-  return l_total;
+  return qMin(l_total, theory::PermanentBanDuration);
 }
 
 QString kenji::AOClient::getReprimand(bool f_positive)
@@ -215,67 +215,6 @@ QString kenji::AOClient::getReprimand(bool f_positive)
   }
 
   return l_list.at(genRand(0, l_list.size() - 1));
-}
-
-bool kenji::AOClient::checkPasswordRequirements(const QString &f_username, const QString &f_password)
-{
-  if (!ConfigManager::passwordRequirements())
-  {
-    return true;
-  }
-
-  if (ConfigManager::passwordMinLength() > f_password.length())
-  {
-    return false;
-  }
-
-  if (ConfigManager::passwordMaxLength() < f_password.length() && ConfigManager::passwordMaxLength() != 0)
-  {
-    return false;
-  }
-
-  if (ConfigManager::passwordRequireMixCase())
-  {
-    if (f_password.toLower() == f_password)
-    {
-      return false;
-    }
-
-    if (f_password.toUpper() == f_password)
-    {
-      return false;
-    }
-  }
-
-  if (ConfigManager::passwordRequireNumbers())
-  {
-    QRegularExpression regex("[0123456789]");
-    QRegularExpressionMatch match = regex.match(f_password);
-    if (!match.hasMatch())
-    {
-      return false;
-    }
-  }
-
-  if (ConfigManager::passwordRequireSpecialCharacters())
-  {
-    QRegularExpression regex(R"re([~!@#$%^&*_+=`|(){}\[\]:;"'<>,.?/\\-])re");
-    QRegularExpressionMatch match = regex.match(f_password);
-    if (!match.hasMatch())
-    {
-      return false;
-    }
-  }
-
-  if (!ConfigManager::passwordCanContainUsername())
-  {
-    if (f_password.contains(f_username))
-    {
-      return false;
-    }
-  }
-
-  return true;
 }
 
 void kenji::AOClient::sendNotice(const QString &f_notice, bool f_global)

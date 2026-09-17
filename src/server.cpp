@@ -7,7 +7,6 @@
 #include "command_extension.h"
 #include "config_manager.h"
 #include "core/logging.h"
-#include "db_manager.h"
 #include "discord.h"
 #include "inventory/area_inventory_handle.h"
 #include "kenji_defs.h"
@@ -47,7 +46,6 @@ kenji::Server::Server(int p_ws_port, const theory::PacketFactory &f_packet_facto
 
   connect(m_global_timer, &Timer::visibilityChanged, this, [this] { broadcast(makeTimerPacket(*m_global_timer, theory::TimerPacket::Visibility)); });
 
-  db_manager = new DBManager(this);
   medieval_parser = theory::makeUnique<MedievalParser>();
 
   acl_roles_handler = new ACLRolesHandler(this);
@@ -79,6 +77,13 @@ bool kenji::Server::start()
   if (bind_addr.protocol() != QAbstractSocket::IPv4Protocol && bind_addr.protocol() != QAbstractSocket::IPv6Protocol && bind_addr != QHostAddress::Any)
   {
     zDebug(log::network) << bind_ip << "is an invalid IP address to listen on! Server not starting, check your config.";
+  }
+
+  _database = theory::makeUnique<ServerDatabase>(QStringLiteral("storage"));
+  if (const auto error = _database->open())
+  {
+    zWarning(log::main) << QStringLiteral("refusing to start: server database: %1").arg(error->toString());
+    return false;
   }
 
   _users = theory::makeUnique<theory::UserDatabase>(QStringLiteral("storage"), ConfigManager::userTokenTtl());
@@ -174,8 +179,7 @@ bool kenji::Server::start()
   });
   connect(m_client_registry.get(), &AOClientRegistry::aboutToRemoveClient, this, [this](theory::PlayerId f_player_id) { delete m_game_observers.take(f_player_id); });
   m_session_registry = theory::makeUnique<SessionRegistry>(*m_client_registry, *_guests);
-  m_connection_pool = theory::makeUnique<ConnectionPool>(*_gateway, *m_session_registry, *db_manager);
-  connect(m_connection_pool.get(), &ConnectionPool::connectionAttempted, logger, &ULogger::logConnectionAttempt);
+  m_connection_pool = theory::makeUnique<ConnectionPool>(*_gateway, *m_session_registry, *_database);
 
   // Assembles the area list
   m_area_names = ConfigManager::sanitizedAreaNames();
@@ -233,19 +237,8 @@ void kenji::Server::acceptConnection(QWebSocket *socket, const QHostAddress &cli
     return;
   }
 
-  QString l_ipid = QCryptographicHash::hash(clientAddress.toString().toUtf8(), QCryptographicHash::Md5).toHex().right(8);
-
-  auto ban = db_manager->isIPBanned(l_ipid);
-  bool is_banned = ban.first;
   int multiclient_count = 1 + m_client_registry->countByAddress(clientAddress);
   bool is_at_multiclient_limit = multiclient_count > ConfigManager::multiClientLimit() && !clientAddress.isLoopback();
-
-  if (is_banned)
-  {
-    refuse(theory::ErrorPacket::Banned, "Reason: " + ban.second.reason + "\nBan ID: " + QString::number(ban.second.id) + "\nUntil: " + ban.second.until());
-    return;
-  }
-
   if (is_at_multiclient_limit)
   {
     refuse(theory::ErrorPacket::ServerFull);
@@ -264,7 +257,7 @@ void kenji::Server::acceptConnection(QWebSocket *socket, const QHostAddress &cli
     return;
   }
 
-  m_connection_pool->create(l_socket, clientAddress, l_ipid);
+  m_connection_pool->create(l_socket, clientAddress);
 }
 
 theory::ServerInfo kenji::Server::serverInfo() const
@@ -443,19 +436,22 @@ void kenji::Server::broadcastMessageToPlayer(const QString &message, theory::Pla
   broadcastToPlayer(l_packet, playerId);
 }
 
-QList<kenji::AOClient *> kenji::Server::getClientsByIpid(const QString &ipid)
+QList<kenji::AOClient *> kenji::Server::getClientsByUserId(theory::UserId userId)
 {
-  return m_client_registry->clientsByIpid(ipid);
-}
-
-QList<kenji::AOClient *> kenji::Server::getClientsByHwid(const QString &f_hwid)
-{
-  return m_client_registry->clientsByHwid(f_hwid);
+  return m_client_registry->clientsByUserId(userId);
 }
 
 kenji::AOClient *kenji::Server::getClientByID(theory::PlayerId id)
 {
   return m_client_registry->client(id);
+}
+
+void kenji::Server::wipeAllTokens()
+{
+  m_connection_pool->clear();
+  m_session_registry->dropAll();
+  _guests->clear();
+  _users->invalidateAllTokens();
 }
 
 int kenji::Server::getPlayerCount()
@@ -522,9 +518,9 @@ QStringList kenji::Server::getBackgrounds()
   return m_backgrounds;
 }
 
-kenji::DBManager *kenji::Server::getDatabaseManager()
+kenji::ServerDatabase &kenji::Server::database()
 {
-  return db_manager;
+  return *_database;
 }
 
 kenji::MedievalParser *kenji::Server::getMedievalParser()

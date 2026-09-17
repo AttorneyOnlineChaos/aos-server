@@ -24,10 +24,10 @@ void kenji::Discord::onModcallWebhookRequested(const QString &f_name, const QStr
   }
 }
 
-void kenji::Discord::onBanWebhookRequested(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID)
+void kenji::Discord::onBanWebhookRequested(theory::UserId f_user_id, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID)
 {
   m_request.setUrl(QUrl(ConfigManager::discordBanWebhookUrl()));
-  QJsonDocument l_json = constructBanJson(f_ipid, f_moderator, f_duration, f_reason, f_banID);
+  QJsonDocument l_json = constructBanJson(f_user_id, f_moderator, f_duration, f_reason, f_banID);
   postJsonWebhook(l_json);
 }
 
@@ -48,11 +48,11 @@ QJsonDocument kenji::Discord::constructModcallJson(const QString &f_name, const 
   return QJsonDocument(l_json);
 }
 
-QJsonDocument kenji::Discord::constructBanJson(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID)
+QJsonDocument kenji::Discord::constructBanJson(theory::UserId f_user_id, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID)
 {
   QJsonObject l_json;
   QJsonArray l_array;
-  QJsonObject l_object{{"color", ConfigManager::discordWebhookColor()}, {"title", "Ban issued by " + f_moderator}, {"description", "Client IPID : " + f_ipid + "\nBan ID: " + QString::number(f_banID) + "\nBan reason : " + f_reason + "\nBanned until : " + f_duration}};
+  QJsonObject l_object{{"color", ConfigManager::discordWebhookColor()}, {"title", "Ban issued by " + f_moderator}, {"description", "User ID : " + QString::number(f_user_id) + "\nBan ID: " + QString::number(f_banID) + "\nBan reason : " + f_reason + "\nBanned until : " + f_duration}};
   l_array.append(l_object);
   l_json["embeds"] = l_array;
 

@@ -8,13 +8,6 @@
    },
    {
       "names": [
-         "login"
-      ],
-      "usage":"/login",
-      "text":"Activates the login dialogue to enter your credentials. This command takes no arguments."
-   },
-   {
-      "names": [
          "getareas",
          "ga"
       ],
@@ -52,20 +45,6 @@
    },
    {
       "names": [
-         "changeauth"
-      ],
-      "usage":"/changeauth",
-      "text":"A helper to change the authorisation for moderators from simple to advanced."
-   },
-   {
-      "names": [
-         "rootpass"
-      ],
-      "usage":"/rootpass <Password>",
-      "text":"Sets the root user's password."
-   },
-   {
-      "names": [
          "background",
          "bg"
       ],
@@ -95,45 +74,24 @@
    },
    {
       "names": [
-         "adduser"
-      ],
-      "usage":"/adduser <Usernames> <Password>",
-      "text":"Adds a user to the moderators in advanced authorisation type."
-   },
-   {
-      "names": [
          "listperms"
       ],
-      "usage":"/listperms 'Usernames'",
-      "text":"Lists the permission of a given user. When called with an argument it shows the user's permission."
+      "usage":"/listperms 'Player ID'",
+      "text":"Lists the permission of a given player. When called with an argument it shows that player's permissions."
    },
    {
       "names": [
          "setperms"
       ],
-      "usage":"/setperms <Usernames> <Role>",
-      "text":"Sets the role of the user."
+      "usage":"/setperms <Player ID> <Role>",
+      "text":"Sets the role of the player's user. The role is stored and granted again whenever that user connects."
    },
    {
       "names": [
          "removeperms"
       ],
-      "usage":"/removeperms <Usernames> <Permission>",
-      "text":"Removes the role from a given user."
-   },
-   {
-      "names": [
-         "listusers"
-      ],
-      "usage":"/listusers",
-      "text":" Lists all users in the server's database. This command takes no arguments."
-   },
-   {
-      "names": [
-         "logout"
-      ],
-      "usage":"/logout",
-      "text":"Logs the caller out from their moderator user. This command takes no arguments."
+      "usage":"/removeperms <Player ID>",
+      "text":"Removes the stored role from the player's user."
    },
    {
       "names": [
@@ -404,13 +362,6 @@
       ],
       "usage":"/unban <ID>",
       "text":"Removes a ban from the database."
-   },
-   {
-      "names": [
-         "removeuser"
-      ],
-      "usage":"/removeuser <Usernames>",
-      "text":"Removes a user from the moderators in `advanced` authorisation type."
    },
    {
       "names": [
@@ -747,13 +698,6 @@
       ],
       "usage":"/updateban <BanID> <Field> [Duration|Reason]",
       "text":"Updates a ban in the database, changing either its reason or duration. First argument is the ban ID. Second is the field, 'reason' or 'duration'. Last argument is either the new duration or reason."
-   },
-   {
-      "names": [
-         "changepass"
-      ],
-      "usage":"/changepass <Password> 'Moderator'",
-      "text":"Changes a moderator's password. The first argument is the new password. The optional second argument is the moderator names."
    },
    {
       "names": [

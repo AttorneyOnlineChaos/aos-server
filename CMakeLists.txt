@@ -73,10 +73,7 @@ qt_add_library(kenji STATIC
   src/connection.h
   src/connection_pool.cpp
   src/connection_pool.h
-  src/crypto_helper.h
   src/data_types.h
-  src/db_manager.cpp
-  src/db_manager.h
   src/discord.cpp
   src/discord.h
   src/inventory_handle.h
@@ -89,6 +86,8 @@ qt_add_library(kenji STATIC
   src/packets.cpp
   src/server.cpp
   src/server.h
+  src/server_database.cpp
+  src/server_database.h
   src/server_publisher.cpp
   src/server_publisher.h
   src/session_registry.cpp

@@ -5,12 +5,12 @@
 #include "badge/badge_gateway.h"
 #include "badge/user_database.h"
 #include "core/pointer_types.h"
-#include "db_manager.h"
 #include "network/cargo_socket.h"
 #include "network/packet_router.h"
 #include "protocol/packets/handshake_packets.h"
 #include "protocol/packets/moderation_packets.h"
 #include "protocol/packets/session_packets.h"
+#include "server_database.h"
 #include "session_registry.h"
 
 #include <QHostAddress>
@@ -29,23 +29,20 @@ class Connection : public QObject
   Q_OBJECT
 
 public:
-  Connection(theory::BadgeGateway &gateway, SessionRegistry &sessions, DBManager &database, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &address, const QString &ipid, QObject *parent = nullptr);
+  Connection(theory::BadgeGateway &gateway, SessionRegistry &sessions, ServerDatabase &database, const theory::Shared<theory::CargoSocket> &socket, const QHostAddress &address, QObject *parent = nullptr);
 
   void beginHandshake();
   void finish();
 
 Q_SIGNALS:
-  void connectionAttempted(const QString &address, const QString &ipid, const QString &hdid);
   void finished();
 
 private:
   theory::BadgeGateway &_gateway;
   SessionRegistry &_sessions;
-  DBManager &_database;
+  ServerDatabase &_database;
   theory::Shared<theory::CargoSocket> _socket;
   QHostAddress _address;
-  QString _ipid;
-  QString _hdid;
 
   theory::PacketRouter _router;
   QTimer _deadline;
