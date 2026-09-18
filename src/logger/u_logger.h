@@ -112,12 +112,14 @@ private:
    *          This has the problem of lacking defaults that work for all when the file is missing.
    *          This QMap contains all default values and overwrites them on logger construction.
    */
-  QHash<QString, QString> m_logtext{{"ic", "[%1][%5][IC][%2(%3)][%4]%6"},
-                                    {"music", "[%1][%5][MUSIC][%2(%3)][%4]%6"},
-                                    {"ooc", "[%1][%5][OOC][%2(%3)][%4]%6"},
-                                    {"cmd", "[%1][%2][CMD][%7][%3(%4)]/%5 %6"},
-                                    {"kick", "[%1][%2][KICK][%3]"},
-                                    {"ban", "[%1][%2][BAN][%3][%4]"},
-                                    {"modcall", "[%1][%2][MODCALL][%3][%4][%5(%6)]"}};
+  QHash<QString, QString> m_logtext{
+      {"ic", "[%1][%5][IC][%2(%3)][%4]%6"},
+      {"music", "[%1][%5][MUSIC][%2(%3)][%4]%6"},
+      {"ooc", "[%1][%5][OOC][%2(%3)][%4]%6"},
+      {"cmd", "[%1][%2][CMD][%7][%3(%4)]/%5 %6"},
+      {"kick", "[%1][%2][KICK][%3]"},
+      {"ban", "[%1][%2][BAN][%3][%4]"},
+      {"modcall", "[%1][%2][MODCALL][%3][%4][%5(%6)]"},
+  };
 };
 } // namespace kenji
