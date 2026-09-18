@@ -74,6 +74,8 @@ public Q_SLOTS:
    */
   void logModcall(const QString &f_area_name, theory::UserId f_user_id, const QString &f_ooc_name, const QString &f_id, const QString &f_char_name);
 
+  void logRegistration(theory::UserId f_user_id, const QString &f_badge_id);
+
   /**
    * @brief Loads template strings for the logger.
    */
@@ -120,6 +122,7 @@ private:
       {"kick", "[%1][%2][KICK][%3]"},
       {"ban", "[%1][%2][BAN][%3][%4]"},
       {"modcall", "[%1][%2][MODCALL][%3][%4][%5(%6)]"},
+      {"register", "[%1][REGISTER][%2][%3]"},
   };
 };
 } // namespace kenji

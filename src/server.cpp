@@ -93,6 +93,8 @@ bool kenji::Server::start()
     return false;
   }
 
+  connect(_users.get(), &theory::UserDatabase::userAdded, logger, &ULogger::logRegistration);
+
   _guests = theory::makeUnique<theory::GuestTokenRegistry>();
 
   _badgeEngine = theory::makeUnique<theory::BadgeServerEngine>(QDir{ConfigManager::badgePluginDataDirectory()}, ConfigManager::badgeRedirectOrigin(), QStringLiteral("/auth"));

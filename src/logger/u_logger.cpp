@@ -82,6 +82,13 @@ void kenji::ULogger::logModcall(const QString &f_area_name, theory::UserId f_use
   }
 }
 
+void kenji::ULogger::logRegistration(theory::UserId f_user_id, const QString &f_badge_id)
+{
+  QString l_time = QDateTime::currentDateTime().toString("ddd MMMM d yyyy | hh:mm:ss");
+  QString l_logEntry = QString(m_logtext.value("register") + "\n").arg(l_time, logIdentity(f_user_id), f_badge_id);
+  updateAreaBuffer("SERVER", l_logEntry);
+}
+
 void kenji::ULogger::loadLogtext()
 {
   // All of this to prevent one single clazy warning from appearing.
