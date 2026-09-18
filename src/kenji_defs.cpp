@@ -2,7 +2,6 @@
 
 Q_LOGGING_CATEGORY(kenji::log::main, "kenji.main")
 Q_LOGGING_CATEGORY(kenji::log::config, "kenji.config")
-Q_LOGGING_CATEGORY(kenji::log::master, "kenji.master")
 Q_LOGGING_CATEGORY(kenji::log::database, "kenji.database")
 Q_LOGGING_CATEGORY(kenji::log::commands, "kenji.commands")
 Q_LOGGING_CATEGORY(kenji::log::network, "kenji.network")

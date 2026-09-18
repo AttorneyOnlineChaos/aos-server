@@ -794,6 +794,19 @@ int kenji::ConfigManager::infoRateLimit()
   return l_limit;
 }
 
+int kenji::ConfigManager::infoRateWindow()
+{
+  bool ok;
+  int l_window = self->m_settings.value("Options/info_rate_window", 3600).toInt(&ok);
+  if (!ok || l_window < 1)
+  {
+    zWarning(log::config) << "info_rate_window is not a positive int!";
+    l_window = 3600;
+  }
+
+  return l_window;
+}
+
 int kenji::ConfigManager::handshakeTimeout()
 {
   bool ok;

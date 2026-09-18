@@ -88,8 +88,6 @@ qt_add_library(kenji STATIC
   src/server.h
   src/server_database.cpp
   src/server_database.h
-  src/server_publisher.cpp
-  src/server_publisher.h
   src/session_registry.cpp
   src/session_registry.h
   src/testimony_recorder.cpp

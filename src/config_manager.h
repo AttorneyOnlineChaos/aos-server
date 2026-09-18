@@ -195,6 +195,8 @@ public:
    */
   static int infoRateLimit();
 
+  static int infoRateWindow();
+
   /**
    * @brief Returns how long a connection may idle without completing the handshake before it is dropped, in seconds.
    */

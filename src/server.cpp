@@ -21,7 +21,7 @@
 #include "protocol/server_settings.h"
 #include "server/host_error.h"
 #include "server/host_server.h"
-#include "server_publisher.h"
+#include "server/master_publisher.h"
 
 #include <QCryptographicHash>
 #include <QDir>
@@ -127,6 +127,7 @@ bool kenji::Server::start()
   hostSettings.authPage = ConfigManager::badgeAuthPage();
   hostSettings.maxPendingConnections = ConfigManager::maxPlayers() + ConfigManager::connectionHeadroom();
   hostSettings.infoRateLimit = ConfigManager::infoRateLimit();
+  hostSettings.infoRateWindow = ConfigManager::infoRateWindow();
   hostSettings.maxMessageSize = ConfigManager::maxPacketSize();
 
   _host = theory::makeUnique<theory::HostServer>(*_badgeEngine);
@@ -146,8 +147,30 @@ bool kenji::Server::start()
   handleDiscordIntegration();
 
   // Construct modern advertiser if enabled in config
-  server_publisher = theory::makeUnique<ServerPublisher>(l_port, &m_player_count);
-  connect(this, &Server::updateHTTPConfiguration, server_publisher.get(), &ServerPublisher::publishServer);
+  if (ConfigManager::publishServerEnabled())
+  {
+    const QUrl l_master_url = ConfigManager::serverlistURL();
+    if (!l_master_url.isValid())
+    {
+      zWarning(log::main) << QStringLiteral("not advertising: Advertiser/ms_ip: '%1'").arg(l_master_url.toString());
+    }
+    else
+    {
+      theory::MasterSettings l_master;
+      l_master.masterUrl = l_master_url;
+      if (!ConfigManager::serverDomainName().trimmed().isEmpty())
+      {
+        l_master.hostname = ConfigManager::serverDomainName();
+      }
+
+      l_master.port = l_port;
+      l_master.useTls = ConfigManager::useTls();
+      _publisher = theory::makeUnique<theory::MasterPublisher>();
+      _publisher->setInfoHandler([this] { return serverInfo(); });
+      _publisher->start(l_master);
+      connect(this, &Server::updateHTTPConfiguration, _publisher.get(), &theory::MasterPublisher::publish);
+    }
+  }
 
   // Get characters from config file
   const QStringList l_charlist = ConfigManager::charlist();
@@ -265,7 +288,7 @@ void kenji::Server::acceptConnection(QWebSocket *socket, const QHostAddress &cli
 theory::ServerInfo kenji::Server::serverInfo() const
 {
   theory::ServerInfo l_info;
-  l_info.name = ConfigManager::serverNickname();
+  l_info.name = ConfigManager::serverName();
   l_info.description = ConfigManager::serverDescription();
   l_info.softwareName = softwareName();
   l_info.softwareVersion = softwareVersion();
@@ -345,7 +368,7 @@ QHostAddress kenji::Server::parseToIPv4(const QHostAddress &f_remote_ip)
 void kenji::Server::reloadSettings()
 {
   ConfigManager::reloadSettings();
-  _host->setInfoRateLimit(ConfigManager::infoRateLimit());
+  _host->setInfoRateLimit(ConfigManager::infoRateLimit(), ConfigManager::infoRateWindow());
   if (const auto error = _badgeEngine->setBadgeIds(ConfigManager::badgeIds()))
   {
     zWarning(log::main) << QStringLiteral("badges unchanged: %1").arg(error->toString());

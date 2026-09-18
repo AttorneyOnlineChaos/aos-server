@@ -25,8 +25,8 @@
 #include "protocol/server_info.h"
 #include "protocol/server_settings.h"
 #include "server/host_server.h"
+#include "server/master_publisher.h"
 #include "server_database.h"
-#include "server_publisher.h"
 #include "session_registry.h"
 #include "timer.h"
 
@@ -74,8 +74,6 @@ public:
    * @brief Starts the server.
    *
    * @details Starts listening for incoming connections on the given port.
-   *
-   * Advertising is not done here -- see Advertiser::contactMasterServer() for that.
    *
    * @return True if the server is listening, false if the port could not be bound.
    */
@@ -327,7 +325,7 @@ private:
   /**
    * @brief Handles HTTP server advertising.
    */
-  theory::Unique<ServerPublisher> server_publisher;
+  theory::Unique<theory::MasterPublisher> _publisher;
 
   /**
    * @brief Handles the universal log framework.
