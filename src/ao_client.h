@@ -483,7 +483,6 @@ private:
 
   void sendCharacterSelection();
 
-  void process(const theory::GoodbyePacket &packet);
   void process(const theory::ChangeCharacterPacket &packet);
   void process(const theory::OocMessagePacket &packet);
   void process(const theory::IcMessagePacket &packet);

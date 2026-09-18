@@ -262,7 +262,6 @@ void kenji::AOClient::drop(theory::ErrorPacket::Code code, const QString &reason
 void kenji::AOClient::registerSessionRoutes()
 {
   m_router.unregisterAllRoutes();
-  m_router.registerRoute<theory::GoodbyePacket>(&AOClient::process, this);
   m_router.registerRoute<theory::ChangeCharacterPacket>(&AOClient::process, this);
   m_router.registerRoute<theory::OocMessagePacket>(&AOClient::process, this);
   m_router.registerRoute<theory::IcMessagePacket>(&AOClient::process, this);
@@ -488,12 +487,15 @@ void kenji::AOClient::setSocket(const theory::Shared<theory::CargoSocket> &socke
   }
 
   m_socket = socket;
-  connect(m_socket.get(), &theory::CargoSocket::disconnectedFromPeer, this, &AOClient::markInactive);
-}
+  connect(m_socket.get(), &theory::CargoSocket::disconnectedFromPeer, this, [this] {
+    if (m_socket->isGracefulClosure())
+    {
+      markExpired();
+      return;
+    }
 
-void kenji::AOClient::process(const theory::GoodbyePacket &)
-{
-  drop();
+    markInactive();
+  });
 }
 
 void kenji::AOClient::sendServerMessage(const QString &message)

@@ -844,7 +844,7 @@ void kenji::AOClient::cmdDc(int argc, QStringList argv)
   Q_UNUSED(argc);
   Q_UNUSED(argv);
 
-  m_socket->close();
+  m_socket->abort();
 }
 
 void kenji::AOClient::cmdWipeTokens(int argc, QStringList argv)
